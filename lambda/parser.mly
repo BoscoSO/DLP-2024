@@ -15,8 +15,10 @@
 %token LET
 %token LETREC
 %token IN
+%token CONCAT
 %token BOOL
 %token NAT
+%token STRING
 
 %token LPAREN
 %token RPAREN
@@ -59,6 +61,8 @@ appTerm :
       { TmPred $2 }
   | ISZERO atomicTerm
       { TmIsZero $2 }
+  | CONCAT atomicTerm atomicTerm
+      { TmConcat ($2, $3) }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 
@@ -70,7 +74,7 @@ atomicTerm :
   | FALSE
       { TmFalse }
   | STRINGV
-      { TmVar $1 }
+      { TmString $1 }
   | INTV
       { let rec f = function
             0 -> TmZero
@@ -90,4 +94,6 @@ atomicTy :
       { TyBool }
   | NAT
       { TyNat }
+  | STRING 
+      { TyString }
 
