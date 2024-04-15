@@ -6,10 +6,6 @@ type ty =
   | TyArr of ty * ty
 ;;
 
-type context =
-  (string * ty) list
-;;
-
 type term =
     TmTrue
   | TmFalse
@@ -27,15 +23,29 @@ type term =
   | TmConcat of term * term
 ;;
 
+type command =
+    Eval of term
+  | Bind of string * term
+;;
+
+type context =
+  (string * ty * term option) list
+;;
+
 val emptyctx : context;;
-val addbinding : context -> string -> ty -> context;;
-val getbinding : context -> string -> ty;;
+val addbinding : context -> string -> ty -> term -> context;;
+val addbinding_type : context -> string -> ty -> context;;
+val getbinding_type : context -> string -> ty;;
+val getbinding_term : context -> string -> term;;
+
 
 val string_of_ty : ty -> string;;
 exception Type_error of string;;
 val typeof : context -> term -> ty;;
 
+
+
 val string_of_term : term -> string;;
 exception NoRuleApplies;;
-val eval : term -> term;;
-
+val eval : context -> term -> bool -> term;;
+exception Not_Found of string;;
