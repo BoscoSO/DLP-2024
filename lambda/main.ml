@@ -6,6 +6,13 @@ open Lambda;;
 open Parser;;
 open Lexer;;
 
+ 
+(* error mesaje of a bad parameter *)
+let usage_msg = "top [-d|--debug]"
+(* auxlar variable to allow debugging *)
+let debug = ref false
+(* arguments that we might expect *)
+let speclist = [("--debug", Arg.Set debug, "Output debug information"); ("-d", Arg.Set debug, "Output debug information")]
 
 exception Not_Ending;;
 
