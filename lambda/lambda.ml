@@ -291,7 +291,7 @@ let rec subst ctx x s tm = match tm with
   | TmString t ->
       TmString t
   | TmConcat (t1, t2) ->
-      TmConcat (subst ctx x s t1,subst x s t2)
+      TmConcat (subst ctx x s t1,subst ctx x s t2)
 ;;
 
 let rec isnumericval tm = match tm with
