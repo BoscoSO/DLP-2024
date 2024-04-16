@@ -29,6 +29,7 @@
 %token EOF
 
 %token <int> INTV
+%token <string> IDV
 %token <string> STRINGV
 
 %start s
@@ -40,7 +41,7 @@
 s :
     term EOF
         { Eval $1 }
-    | STRINGV EQ term
+    | IDV EQ term
         { Bind ($1, $3) }
 
 
@@ -49,11 +50,11 @@ term :
       { $1 }
   | IF term THEN term ELSE term
       { TmIf ($2, $4, $6) }
-  | LAMBDA STRINGV COLON ty DOT term
+  | LAMBDA IDV COLON ty DOT term
       { TmAbs ($2, $4, $6) }
-  | LET STRINGV EQ term IN term
+  | LET IDV EQ term IN term
       { TmLetIn ($2, $4, $6) }
-  | LETREC STRINGV COLON ty EQ term IN term
+  | LETREC IDV COLON ty EQ term IN term
       { TmLetIn ($2, TmFix (TmAbs ($2, $4, $6)), $8) }
 
 appTerm :
@@ -77,6 +78,8 @@ atomicTerm :
       { TmTrue }
   | FALSE
       { TmFalse }
+  | IDV
+      { TmVar $1 }
   | STRINGV
       { TmString $1 }
   | INTV
