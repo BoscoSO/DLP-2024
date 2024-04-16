@@ -4,7 +4,7 @@ type ty =
   | TyNat
   | TyString
   | TyArr of ty * ty
-;;
+;; 
 
 type term =
     TmTrue
@@ -47,5 +47,5 @@ val typeof : context -> term -> ty;;
 
 val string_of_term : term -> string;;
 exception NoRuleApplies;;
-val eval : context -> term -> bool -> term;;
+val eval : context -> term -> term;;
 exception Not_Found of string;;

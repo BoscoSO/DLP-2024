@@ -6,14 +6,6 @@ open Lambda;;
 open Parser;;
 open Lexer;;
 
- 
-(* error mesaje of a bad parameter *)
-let usage_msg = "top [-d|--debug]"
-(* auxlar variable to allow debugging *)
-let debug = ref false
-(* arguments that we might expect *)
-let speclist = [("--debug", Arg.Set debug, "Output debug information"); ("-d", Arg.Set debug, "Output debug information")]
-
 exception Not_Ending;;
 
 (* will not stop until receiving ;; *)
@@ -36,11 +28,11 @@ let rec exec exp ctx = match exp with
   | h::t -> 
       match s token (from_string (h)) with
         | Eval tm  -> 
-            let ty = (string_of_ty (typeof ctx tm)) and tm = string_of_term (eval ctx tm (!debug))
+            let ty = (string_of_ty (typeof ctx tm)) and tm = string_of_term (eval ctx tm)
             in print_endline ("- : " ^ ty ^ " = " ^ tm);
             exec t ctx
         | Bind (name,tm) -> 
-            let ty = (string_of_ty (typeof ctx tm)) and tm_eval = eval ctx tm (!debug) in
+            let ty = (string_of_ty (typeof ctx tm)) and tm_eval = eval ctx tm in
               print_endline ("val " ^ name ^ " : " ^ ty ^ " = " ^ string_of_term (tm_eval) );
               (* Updating Context *)
               exec t (addbinding ctx name (typeof ctx tm) (tm_eval)) 

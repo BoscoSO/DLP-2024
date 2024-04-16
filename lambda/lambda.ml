@@ -398,17 +398,18 @@ let rec eval1 ctx tm = match tm with
       let t1' = eval1 ctx t1 in 
       TmConcat (t1', t2)
 
+  | TmVar x ->  
+      getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)
   | _ ->
       raise NoRuleApplies
 ;;
 
 
 (* Evaluate until no more terms can be evaluated *)
-let rec eval ctx tm d =
+let rec eval ctx tm =
   try
     let tm' = eval1 ctx tm in
-      if (d) then print_endline ("\t" ^ string_of_term (tm'));
-      eval ctx tm' d
+      eval ctx tm' 
   with
     NoRuleApplies -> tm
 ;;
