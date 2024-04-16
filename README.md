@@ -23,6 +23,9 @@
 
 ### Solo se puede escoger tipos __suma__ si hemos escogido __pares__
 
+## TODO
+Bosco: listas, variantes y tuplas
+Aresi: subtipados, registros y pretty printer
 
 ## Cosas a añadir
 Contexto: falta por añadir tipos (mayusculas en el lexer)
