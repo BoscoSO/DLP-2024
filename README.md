@@ -25,6 +25,7 @@
 
 ## TODO
 Bosco: listas, variantes y tuplas
+
 Aresi: subtipados, registros y pretty printer
 
 ## Cosas a añadir
