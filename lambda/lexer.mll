@@ -31,7 +31,7 @@ rule token = parse
   | "->"        { ARROW }
   | ['0'-'9']+  { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | ['a'-'z']['a'-'z' '_' '0'-'9']*
-                { STRINGV (Lexing.lexeme lexbuf) }
+                { IDV (Lexing.lexeme lexbuf) }
   | '"'[^ '"' '\n']*'"'
                 { let s = Lexing.lexeme lexbuf in STRINGV (String.sub s 1 (String.length s - 2))}
   | eof         { EOF }
