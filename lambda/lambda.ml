@@ -154,17 +154,19 @@ let rec typeof ctx tm = match tm with
           if tyT11 = tyT12 then tyT12
           else raise (Type_error "result of body not compatible with domain")
           | _ -> raise (Type_error "arrow type expected"))
+
+    (* String rules *)
   | TmString _ ->
       TyString
+
   | TmConcat (t1, t2)->
       let tyT1 = typeof ctx t1 in 
       let tyT2 = typeof ctx t2 in 
       (match (tyT1, tyT2) with
           (TyString, TyString) -> TyString
-        | (_, TyString) -> raise (Type_error "first argument is not a string")
-        | (TyString, _) -> raise (Type_error "second argument is not a string")
-        | (_, _) -> raise (Type_error "none of the arguments are strings")
-      )
+        | (_, TyString) -> raise (Type_error "first argument of concat is not a string")
+        | (TyString, _) -> raise (Type_error "second argument of concat is not a string")
+        | (_, _) -> raise (Type_error "none of the arguments of concat are strings"))
 ;;
 
 
@@ -253,45 +255,45 @@ let rec fresh_name x l =
   if not (List.mem x l) then x else fresh_name (x ^ "'") l
 ;;
     
-let rec subst ctx x s tm = match tm with
+let rec subst x s tm = match tm with
     TmTrue ->
       TmTrue
   | TmFalse ->
       TmFalse
   | TmIf (t1, t2, t3) ->
-      TmIf (subst ctx x s t1, subst ctx x s t2, subst ctx x s t3)
+      TmIf (subst x s t1, subst x s t2, subst x s t3)
   | TmZero ->
       TmZero
   | TmSucc t ->
-      TmSucc (subst ctx x s t)
+      TmSucc (subst x s t)
   | TmPred t ->
-      TmPred (subst ctx x s t)
+      TmPred (subst x s t)
   | TmIsZero t ->
-      TmIsZero (subst ctx x s t)
+      TmIsZero (subst x s t)
   | TmVar y ->
       if y = x then s else tm
   | TmAbs (y, tyY, t) -> 
       if y = x then tm
       else let fvs = free_vars s in
            if not (List.mem y fvs)
-           then TmAbs (y, tyY, subst ctx x s t)
+           then TmAbs (y, tyY, subst x s t)
            else let z = fresh_name y (free_vars t @ fvs) in
-                TmAbs (z, tyY, subst ctx x s (subst ctx y (TmVar z) t))  
+                TmAbs (z, tyY, subst x s (subst y (TmVar z) t))  
   | TmApp (t1, t2) ->
-      TmApp (subst ctx x s t1, subst ctx x s t2)
+      TmApp (subst x s t1, subst x s t2)
   | TmLetIn (y, t1, t2) ->
-      if y = x then TmLetIn (y, subst ctx x s t1, t2)
+      if y = x then TmLetIn (y, subst x s t1, t2)
       else let fvs = free_vars s in
            if not (List.mem y fvs)
-           then TmLetIn (y, subst ctx x s t1, subst ctx x s t2)
+           then TmLetIn (y, subst x s t1, subst x s t2)
            else let z = fresh_name y (free_vars t2 @ fvs) in
-                TmLetIn (z, subst ctx x s t1, subst ctx x s (subst ctx y (TmVar z) t2))
+                TmLetIn (z, subst x s t1, subst x s (subst y (TmVar z) t2))
   | TmFix t ->
-      TmFix (subst ctx x s t)
+      TmFix (subst x s t)
   | TmString t ->
       TmString t
   | TmConcat (t1, t2) ->
-      TmConcat (subst ctx x s t1,subst ctx x s t2)
+      TmConcat (subst x s t1,subst x s t2)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -359,7 +361,7 @@ let rec eval1 ctx tm = match tm with
 
     (* E-AppAbs *)
   | TmApp (TmAbs(x, _, t12), v2) when isval v2 ->
-      subst ctx x v2 t12
+      subst x v2 t12
 
     (* E-App2: evaluate argument before applying function *)
   | TmApp (v1, t2) when isval v1 ->
@@ -373,7 +375,7 @@ let rec eval1 ctx tm = match tm with
 
     (* E-LetV *)
   | TmLetIn (x, v1, t2) when isval v1 ->
-      subst ctx x v1 t2
+      subst x v1 t2
 
     (* E-Let *)
   | TmLetIn(x, t1, t2) ->
@@ -381,7 +383,7 @@ let rec eval1 ctx tm = match tm with
       TmLetIn (x, t1', t2)
     (* E-FixBeta *)
   | TmFix (TmAbs (x, _, t2)) ->
-      subst ctx x tm t2
+      subst x tm t2
     (* E-Fix *)
   | TmFix t1 ->
       let t1' = eval1 ctx t1 in 

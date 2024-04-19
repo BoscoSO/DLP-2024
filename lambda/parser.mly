@@ -19,7 +19,7 @@
 %token BOOL
 %token NAT
 %token STRING
-
+%token FIX
 %token LPAREN
 %token RPAREN
 %token DOT
@@ -41,7 +41,7 @@
 s :
     term EOF
         { Eval $1 }
-    | IDV EQ term
+    | IDV EQ term EOF
         { Bind ($1, $3) }
 
 
@@ -68,6 +68,8 @@ appTerm :
       { TmIsZero $2 }
   | CONCAT atomicTerm atomicTerm
       { TmConcat ($2, $3) }
+  | FIX atomicTerm
+      { TmFix $2 }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 
