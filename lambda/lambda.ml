@@ -25,6 +25,8 @@ type term =
   | TmFix of term
   | TmString of string
   | TmConcat of term * term
+  | TmFirst of term
+  | TmRest of term
 ;;
 
 (* Command *)
@@ -158,7 +160,6 @@ let rec typeof ctx tm = match tm with
     (* String rules *)
   | TmString _ ->
       TyString
-
   | TmConcat (t1, t2)->
       let tyT1 = typeof ctx t1 in 
       let tyT2 = typeof ctx t2 in 
@@ -167,6 +168,12 @@ let rec typeof ctx tm = match tm with
         | (_, TyString) -> raise (Type_error "first argument of concat is not a string")
         | (TyString, _) -> raise (Type_error "second argument of concat is not a string")
         | (_, _) -> raise (Type_error "none of the arguments of concat are strings"))
+  | TmFirst s ->
+      if typeof ctx s == TyString then TyString
+      else raise (Type_error "argument of 'first' is not a string")
+  | TmRest s ->
+      if typeof ctx s == TyString then TyString
+      else raise (Type_error "argument of 'rest' is not a string")
 ;;
 
 
@@ -207,6 +214,10 @@ let rec string_of_term = function
       "\"" ^ s ^ "\""
   | TmConcat (s1, s2) ->
       string_of_term s1 ^ string_of_term s2
+  | TmFirst s ->
+      string_of_term s
+  | TmRest s ->
+      string_of_term s
 ;;
 (***********************************-EVAL-***********************************)
 
@@ -249,6 +260,10 @@ let rec free_vars tm = match tm with
       []
   | TmConcat (t1, t2) ->
       lunion (free_vars t1) (free_vars t2)
+  | TmFirst s ->
+      free_vars s
+  | TmRest s ->
+      free_vars s
 ;;
 
 let rec fresh_name x l =
@@ -294,6 +309,10 @@ let rec subst x s tm = match tm with
       TmString t
   | TmConcat (t1, t2) ->
       TmConcat (subst x s t1,subst x s t2)
+  | TmFirst t ->
+      TmFirst (subst x s t)
+  | TmRest t ->
+      TmRest (subst x s t)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -399,6 +418,18 @@ let rec eval1 ctx tm = match tm with
   | TmConcat (t1, t2) ->
       let t1' = eval1 ctx t1 in 
       TmConcat (t1', t2)
+  | TmFirst (TmString s) ->
+      if String.length s < 1 then TmString ""
+      else TmString (String.make 1 s.[0])
+  | TmFirst s ->
+      let s' = eval1 ctx s in
+      TmFirst s'
+  | TmRest (TmString s) ->
+      if String.length s < 2 then TmString ""
+      else TmString (String.sub s 1 ((String.length s)-1))
+  | TmRest s ->
+      let s' = eval1 ctx s in
+      TmRest s'
 
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)

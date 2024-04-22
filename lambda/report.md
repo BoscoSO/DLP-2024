@@ -17,7 +17,21 @@ letrec fact : Nat -> Nat = lambda n : Nat. if iszero n then 1 else prod n (fact 
 
 3. __Strings__
 We added support for the string type.
-To make this posible we created a new type, TyString, and a new term, TmString, to both lambda.ml and lambda.mli and modified the functions eval1, isval, subst, free_vars, string of term, typeof and string_of_ty so as to match this new changes added.
+To make this posible we created a new type, TyString, and a new term, TmString, in both lambda.ml and lambda.mli and modified the functions eval1, isval, subst, free_vars, string of term, typeof and string_of_ty so as to match this new changes added.
 We also had to make modifications in the lexer.mll, where we added a new rule to match the structure of a string. By this rule, strings have to be encapsulated between quotation marks and must not contain neither the new line character (\n) nor quotation marks in between the ones that form the string in itself.
 Finally, we had to expand the existing rules in the parser.mly file by adding the string type and term to both atomicTerm and atomicTy
-We also implemented the function concat, that concatenates two diferent strings, for which we had to once again modify the formerly cited files, functions and rules (excluding the lexer.mll file)
+We also implemented the functions concat (concatenates two diferent strings), first (returns the first character of a string as a string, or "" if the string is empty) and rest (returns a substring of the given string without the first element) for which we had to once again modify the formerly cited files, functions and rules (excluding the lexer.mll file)
+```
+>> x = "abcde";;
+val x : String = "abcde"
+>> concat x "fghij";;
+- : String = "abcdefghij"
+>> first x;;
+- : String = "a"
+>> rest x;;
+- : String = "bcde"
+>> first "";;
+- : String = ""
+>> rest "";;
+- : String = ""
+```

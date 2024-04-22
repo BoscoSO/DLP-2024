@@ -21,6 +21,8 @@ type term =
   | TmFix of term
   | TmString of string
   | TmConcat of term * term
+  | TmFirst of term
+  | TmRest of term
 ;;
 
 type command =

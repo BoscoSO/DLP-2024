@@ -21,6 +21,8 @@ rule token = parse
   | "fix"       { FIX }
   | "in"        { IN }
   | "concat"    { CONCAT }
+  | "first"     { FIRST }
+  | "rest"      { REST }
   | "Bool"      { BOOL }
   | "Nat"       { NAT }
   | "String"    { STRING }

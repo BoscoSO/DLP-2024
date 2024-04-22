@@ -16,6 +16,8 @@
 %token LETREC
 %token IN
 %token CONCAT
+%token FIRST
+%token REST
 %token BOOL
 %token NAT
 %token STRING
@@ -68,6 +70,10 @@ appTerm :
       { TmIsZero $2 }
   | CONCAT atomicTerm atomicTerm
       { TmConcat ($2, $3) }
+  | FIRST atomicTerm
+      { TmFirst $2 }
+  | REST atomicTerm
+      { TmRest $2 }
   | FIX atomicTerm
       { TmFix $2 }
   | appTerm atomicTerm
