@@ -45,6 +45,10 @@ s :
         { Eval $1 }
     | IDV EQ term EOF
         { Bind ($1, $3) }
+    | LET IDV EQ term EOF
+        { Bind ($2, TmLetIn($2, $4, TmVar $2)) }
+    | LETREC IDV COLON ty EQ term EOF
+        { Bind ($2, TmLetIn($2, TmFix(TmAbs ($2, $4, $6)), TmVar $2)) }
 
 
 term :
