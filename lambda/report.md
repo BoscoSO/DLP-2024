@@ -9,10 +9,27 @@ To simplify the declaration of recursive functions, we added a new token to the 
 For this, we added a new type of term, 'TmFix'
 To prove the correctfullness of the behaviour of this new functionality, we provide, both here and in the examples.txt file, the following implementations of the product, Fibonacci and factorial functions:
 ```
-letrec sum : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then m else succ (sum (pred n) m)
-letrec prod : Nat -> Nat -> Nat = lambda n : Nat. lambda m : Nat. if iszero n then 0 else if iszero m then 0 else sum n (prod n (pred m))
-letrec fib : Nat -> Nat = lambda n : Nat. if iszero n then 0 else if iszero (pred n) then 1 else sum (fib (pred n)) (fib (pred (pred n)))
-letrec fact : Nat -> Nat = lambda n : Nat. if iszero n then 1 else prod n (fact n (pred n))
+letrec sum : Nat -> Nat -> Nat = 
+	lambda n : Nat. lambda m : Nat.
+		if iszero n then m
+		else succ (sum (pred n) m);;
+
+letrec prod : Nat -> Nat -> Nat =
+	lambda n : Nat. lambda m : Nat.
+		if iszero n then 0
+		else if iszero m then 0
+			else sum n (prod n (pred m));;
+
+letrec fib : Nat -> Nat = 
+	lambda n : Nat. 
+		if iszero n then 0 
+			else if iszero (pred n) then 1 
+				else sum (fib (pred n)) (fib (pred (pred n)));;
+
+letrec fact: Nat -> Nat =
+    lambda n : Nat. 
+    	if iszero n then 1 
+    	else prod n (fact (pred n));;
 ```
 
 3. __Strings__
