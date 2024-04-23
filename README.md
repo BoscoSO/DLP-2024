@@ -19,7 +19,6 @@ Bosco: listas, variantes y tuplas
 Aresi: subtipados, registros y pretty printer
 
 ## Cosas a añadir
-Contexto: falta por añadir tipos (mayusculas en el lexer)
 Modulo format de ocaml para el prettyprinter (utilizar las cajas)
 
 ## Dudas
