@@ -1,3 +1,4 @@
+open Option;;
 
 (* TYPE DEFINITIONS *)
 
@@ -6,6 +7,7 @@ type ty =
   | TyNat
   | TyString
   | TyArr of ty * ty
+  | TyDeclared of string
 ;;
 
 
@@ -31,13 +33,20 @@ type term =
 
 (* Command *)
 type command =
-    Eval of term
-  | Bind of string * term
+  | EvalOfTerm of term
+  | EvalOfType of ty
+  | BindOfTerm of string * term
+  | BindOfType of string * ty
+;;
+
+type binding =
+  | BindTy of ty
+  | BindTm of (ty * term)
 ;;
 
 (* CONTEXT MANAGEMENT *)
 type context =
-  (string * ty * term option) list
+  (string * binding) list
 ;;
 
 let emptyctx =
@@ -45,26 +54,25 @@ let emptyctx =
 ;;
 
 (* Adds binding to a given context *)
-let addbinding ctx x ty te =
-  (x, ty, Some(te)) :: ctx
+let addbinding ctx x ty tm =
+  (x, BindTm(ty, tm)) :: ctx
 ;;
 
 let addbinding_type ctx x ty =
-  (x, ty, None) :: ctx
+  (x, BindTy ty) :: ctx
 ;;
 
 exception Not_Found of string;;
 
 (* Gets binding to a given context *)
-let rec getbinding_type ctx x = match ctx with
-  ((a,ty,_)::t) -> if x=a then ty else getbinding_type t x
-  |[] -> raise (Not_Found x)
+let getbinding_type ctx x = match List.assoc x ctx with
+    BindTy ty -> ty
+  | BindTm (ty, _) -> ty
 ;;
 
-let rec getbinding_term ctx x = match ctx with
-  ((a,_,Some(term))::t) -> if x=a then term else getbinding_term t x
-  |((a,_,None)::t) -> getbinding_term t x
-  |[] -> raise (Not_Found x)
+let getbinding_term ctx x = match List.assoc x ctx with
+    BindTm (_, tm) -> tm
+  | _ -> raise (Not_Found x)
 ;;
 
 
@@ -79,6 +87,21 @@ let rec string_of_ty ty = match ty with
       "String"
   | TyArr (ty1, ty2) ->
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
+  | TyDeclared str ->
+      str
+;;
+
+let rec convert_type ctx ty = match ty with
+    TyBool ->
+      TyBool
+  | TyNat ->
+      TyNat
+  | TyString ->
+      TyString
+  | TyArr (t1, t2) ->
+      TyArr (convert_type ctx t1, convert_type ctx t2)
+  | TyDeclared ty ->
+      getbinding_type ctx ty
 ;;
 
 exception Type_error of string
@@ -128,9 +151,10 @@ let rec typeof ctx tm = match tm with
 
     (* T-Abs *)
   | TmAbs (x, tyT1, t2) ->
-      let ctx' = addbinding_type ctx x tyT1 in
+      let ty' = convert_type ctx tyT1 in
+      let ctx' = addbinding_type ctx x ty' in
       let tyT2 = typeof ctx' t2 in
-      TyArr (tyT1, tyT2)
+      TyArr (ty', tyT2)
 
     (* T-App *)
   | TmApp (t1, t2) ->
@@ -139,7 +163,9 @@ let rec typeof ctx tm = match tm with
       (match tyT1 with
            TyArr (tyT11, tyT12) ->
              if tyT2 = tyT11 then tyT12
-             else raise (Type_error "parameter type mismatch")
+             else
+
+                raise (Type_error ("parameter type mismatch"))
          | _ -> raise (Type_error "arrow type expected"))
 
     (* T-Let *)

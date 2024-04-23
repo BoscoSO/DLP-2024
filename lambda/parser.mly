@@ -4,6 +4,7 @@
 %}
 
 %token LAMBDA
+%token TYPE
 %token TRUE
 %token FALSE
 %token IF
@@ -32,6 +33,7 @@
 
 %token <int> INTV
 %token <string> IDV
+%token <string> IDT
 %token <string> STRINGV
 
 %start s
@@ -42,13 +44,17 @@
 
 s :
     term EOF
-        { Eval $1 }
+        { EvalOfTerm $1 }
+    | TYPE ty EOF
+        { EvalOfType $2 }
     | IDV EQ term EOF
-        { Bind ($1, $3) }
+        { BindOfTerm ($1, $3) }
+    | IDT EQ ty EOF
+        { BindOfType ($1, $3) }
     | LET IDV EQ term EOF
-        { Bind ($2, TmLetIn($2, $4, TmVar $2)) }
+        { BindOfTerm ($2, TmLetIn($2, $4, TmVar $2)) }
     | LETREC IDV COLON ty EQ term EOF
-        { Bind ($2, TmLetIn($2, TmFix(TmAbs ($2, $4, $6)), TmVar $2)) }
+        { BindOfTerm ($2, TmLetIn($2, TmFix(TmAbs ($2, $4, $6)), TmVar $2)) }
 
 
 term :
@@ -115,4 +121,6 @@ atomicTy :
       { TyNat }
   | STRING 
       { TyString }
+  | IDT
+      { TyDeclared $1 }
 
