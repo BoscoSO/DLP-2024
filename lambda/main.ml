@@ -27,15 +27,21 @@ let rec exec exp ctx = match exp with
   | [] -> ctx
   | h::t -> 
       match s token (from_string (h)) with
-        | Eval tm  -> 
+        | EvalOfTerm tm  -> 
             let ty = (string_of_ty (typeof ctx tm)) and tm = string_of_term (eval ctx tm)
             in print_endline ("- : " ^ ty ^ " = " ^ tm);
             exec t ctx
-        | Bind (name,tm) -> 
+        | EvalOfType ty  -> 
+            print_endline ("- : type = " ^ string_of_ty (convert_type ctx ty));
+            exec t ctx
+        | BindOfTerm (name,tm) -> 
             let ty = (string_of_ty (typeof ctx tm)) and tm_eval = eval ctx tm in
-              print_endline ("val " ^ name ^ " : " ^ ty ^ " = " ^ string_of_term (tm_eval) );
+              print_endline ("- : val " ^ name ^ " : " ^ ty ^ " = " ^ string_of_term (tm_eval) );
               (* Updating Context *)
-              exec t (addbinding ctx name (typeof ctx tm) (tm_eval)) 
+              exec t (addbinding ctx name (typeof ctx tm) (tm_eval))
+        | BindOfType (name, ty) ->
+            print_endline ("- : " ^ name ^ " = " ^ string_of_ty (convert_type ctx ty));
+            exec t (addbinding_type ctx name ty)
 ;;
 
 

@@ -4,6 +4,7 @@ type ty =
   | TyNat
   | TyString
   | TyArr of ty * ty
+  | TyDeclared of string
 ;; 
 
 type term =
@@ -26,12 +27,19 @@ type term =
 ;;
 
 type command =
-    Eval of term
-  | Bind of string * term
+  | EvalOfTerm of term
+  | EvalOfType of ty
+  | BindOfTerm of string * term
+  | BindOfType of string * ty
+;;
+
+type binding =
+  | BindTy of ty
+  | BindTm of (ty * term)
 ;;
 
 type context =
-  (string * ty * term option) list
+  (string * binding) list
 ;;
 
 val emptyctx : context;;
@@ -39,7 +47,7 @@ val addbinding : context -> string -> ty -> term -> context;;
 val addbinding_type : context -> string -> ty -> context;;
 val getbinding_type : context -> string -> ty;;
 val getbinding_term : context -> string -> term;;
-
+val convert_type : context -> ty -> ty;;
 
 val string_of_ty : ty -> string;;
 exception Type_error of string;;

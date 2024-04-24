@@ -9,28 +9,63 @@ To simplify the declaration of recursive functions, we added a new token to the 
 For this, we added a new type of term, 'TmFix'
 To prove the correctfullness of the behaviour of this new functionality, we provide, both here and in the examples.txt file, the following implementations of the product, Fibonacci and factorial functions:
 ```
-letrec sum : Nat -> Nat -> Nat = 
+>> letrec sum : Nat -> Nat -> Nat = 
 	lambda n : Nat. lambda m : Nat.
 		if iszero n then m
 		else succ (sum (pred n) m);;
 
-letrec prod : Nat -> Nat -> Nat =
+>> letrec prod : Nat -> Nat -> Nat =
 	lambda n : Nat. lambda m : Nat.
 		if iszero n then 0
 		else if iszero m then 0
 			else sum n (prod n (pred m));;
 
-letrec fib : Nat -> Nat = 
+>> letrec fib : Nat -> Nat = 
 	lambda n : Nat. 
 		if iszero n then 0 
 			else if iszero (pred n) then 1 
 				else sum (fib (pred n)) (fib (pred (pred n)));;
 
-letrec fact: Nat -> Nat =
+>> letrec fact: Nat -> Nat =
     lambda n : Nat. 
     	if iszero n then 1 
     	else prod n (fact (pred n));;
 ```
+
+2. __Global Definitions Context__
+Cambios en el lambda.ml
+- En el tipo ty añadi el nuevo tipo TyDeclared of string para referirse a los tipos que no son propios del lenguaje y definimos nosotros
+- El tipo contexto ahora es una lista de (string * binding)
+- El tipo binding puede ser | BindTy of ty | BindTm of (ty * term)
+- Esto simplifica las funciones de add y getbinding
+En el lexer está IDT y TYPE. IDT es el identificador de tipo y type es para comprobar
+En el parser cree
+- El tipo command lo he cambiado bastante, ahora puede tener EvalOfTerm, EvalOfType, BindOfTerm o BindOfType
+- Cree una funcion convert_type ctx ty que convierte un tipo TyDeclared en el tipo basico del que deriva
+- Cambia un poco en typeof el de TmAbs
+
+Cambios en lambda.mli
+- Añadir los cambios que hice en el .ml
+
+Cambios en el lexer.mll
+- Añadidos los tokens IDT y TYPE
+
+Cambios en el parser.mly
+- Añadir esos nuevos tokens
+- Añadidas nuevas reglas en s para poder añadir al contexto los tipos y funciones
+- Añadida una regla en term para convertir el tipo de IDT
+
+```
+>> x = 10;;
+- val : x : Nat = 10
+>> N = Nat;;	/*esto seguiria la forma IDT EQ ty EOF en el parser*/
+- : N = Nat
+>> type N;;
+- : type = Nat  /*usando type te dice de que tipo es el tipo creado*/
+```
+
+
+
 
 3. __Strings__
 We added support for the string type.
