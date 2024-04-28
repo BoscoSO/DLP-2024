@@ -19,12 +19,20 @@
 %token CONCAT
 %token FIRST
 %token REST
+%token ISEMPTYLIST
+%token HEAD
+%token TAIL
 %token BOOL
 %token NAT
 %token STRING
+%token NULL
+%token LIST
+%token LISTV
 %token FIX
 %token LPAREN
 %token RPAREN
+%token LBRACK
+%token RBRACK
 %token DOT
 %token EQ
 %token COLON
@@ -86,6 +94,16 @@ appTerm :
       { TmRest $2 }
   | FIX atomicTerm
       { TmFix $2 }
+  | LISTV LBRACK ty RBRACK appTerm appTerm
+      { TmList ($3, $5, $6)}
+  | ISEMPTYLIST LBRACK appTerm RBRACK COLON ty
+      { TmIsEmptyList ($6, $3) }
+  | HEAD LBRACK appTerm RBRACK COLON ty
+      { TmHead ($6, $3) }
+  | TAIL LBRACK appTerm RBRACK COLON ty
+      { TmTail ($6, $3) }
+  | NULL LBRACK ty RBRACK
+      { TmEmptyList ($3) }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 
@@ -123,4 +141,6 @@ atomicTy :
       { TyString }
   | IDT
       { TyDeclared $1 }
+  | LBRACK ty RBRACK
+      { TyList ($2) }
 

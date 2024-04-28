@@ -5,6 +5,7 @@ type ty =
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
+  | TyList of ty
 ;; 
 
 type term =
@@ -24,6 +25,11 @@ type term =
   | TmConcat of term * term
   | TmFirst of term
   | TmRest of term
+  | TmList of ty * term * term 
+  | TmEmptyList of ty 
+  | TmIsEmptyList of ty * term 
+  | TmHead of ty * term 
+  | TmTail of ty * term
 ;;
 
 type command =

@@ -8,6 +8,7 @@ type ty =
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
+  | TyList of ty
 ;;
 
 
@@ -29,6 +30,11 @@ type term =
   | TmConcat of term * term
   | TmFirst of term
   | TmRest of term
+  | TmList of ty * term * term 
+  | TmEmptyList of ty
+  | TmIsEmptyList of ty * term 
+  | TmHead of ty * term 
+  | TmTail of ty * term
 ;;
 
 (* Command *)
@@ -89,6 +95,8 @@ let rec string_of_ty ty = match ty with
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyDeclared str ->
       str
+  | TyList t ->
+      string_of_ty t ^ " list"
 ;;
 
 let rec convert_type ctx ty = match ty with
@@ -102,6 +110,8 @@ let rec convert_type ctx ty = match ty with
       TyArr (convert_type ctx t1, convert_type ctx t2)
   | TyDeclared ty ->
       getbinding_type ctx ty
+  | TyList ty ->
+      TyList (convert_type ctx ty)
 ;;
 
 exception Type_error of string
@@ -195,11 +205,34 @@ let rec typeof ctx tm = match tm with
         | (TyString, _) -> raise (Type_error "second argument of concat is not a string")
         | (_, _) -> raise (Type_error "none of the arguments of concat are strings"))
   | TmFirst s ->
-      if typeof ctx s == TyString then TyString
+      if typeof ctx s = TyString then TyString
       else raise (Type_error "argument of 'first' is not a string")
   | TmRest s ->
-      if typeof ctx s == TyString then TyString
+      if typeof ctx s = TyString then TyString
       else raise (Type_error "argument of 'rest' is not a string")
+    (* List Rules *)
+    (* T-Nil *)
+  | TmEmptyList t ->
+      TyList t 
+    (* T-Cons *)
+  | TmList (ty, h, t) ->
+      let tyHD = typeof ctx h in 
+      let tyTL = typeof ctx t in
+      if (tyHD = ty) && (tyTL = TyList ty) then TyList ty
+      else raise (Type_error ("type mismatch in elements of " ^ string_of_ty ty ^ " list"))
+    (* T-IsNil *)
+  | TmIsEmptyList (ty, t) ->
+      if typeof ctx t = TyList ty then TyBool
+      else raise (Type_error "argument of 'isEmptyList' is not a list")
+    (* T-Head *)
+  | TmHead (ty, t) ->
+      if typeof ctx t = TyList ty then ty
+      else raise (Type_error "argument of 'head' is not a list")
+    (* T-Tail *)
+  | TmTail (ty, t) ->
+      if typeof ctx t = TyList ty then TyList ty
+      else raise (Type_error "argument of 'tail' is not a list")
+
 ;;
 
 
@@ -236,6 +269,7 @@ let rec string_of_term = function
       "let " ^ s ^ " = " ^ string_of_term t1 ^ " in " ^ string_of_term t2
   | TmFix t ->
       "(fix " ^ string_of_term t ^ ")"
+    (* Strings *)
   | TmString s ->
       "\"" ^ s ^ "\""
   | TmConcat (s1, s2) ->
@@ -244,6 +278,29 @@ let rec string_of_term = function
       string_of_term s
   | TmRest s ->
       string_of_term s
+    (* Lists *)
+  | TmEmptyList t ->
+      "[]"
+  | TmList (ty, h, TmEmptyList t) ->
+      "[" ^ string_of_term h ^ "]"
+  | TmList (ty, h, t)->
+      let rec string_of_list l = match l with
+        | TmEmptyList ty-> ""
+        | TmList (ty, h, TmEmptyList t) -> string_of_term h
+        | TmList (ty, h, t) -> string_of_term h ^ ", " ^ string_of_list t
+        | t -> string_of_term t
+      in "[" ^ string_of_term h ^ ", " ^ string_of_list t ^ "]"
+  | TmIsEmptyList (ty, t) ->
+      "IsEmptyList : List [" ^ string_of_ty ty ^ "] : [" ^ string_of_term t ^ "]"
+  | TmHead (ty, t) ->
+      "Head : " ^ string_of_term t
+  | TmTail (ty, t) ->
+      let rec string_of_list l = match l with
+        | TmEmptyList ty-> ""
+        | TmList (ty, h, TmEmptyList t) -> string_of_term h
+        | TmList (ty, h, t) -> string_of_term h ^ ", " ^ string_of_list t
+        | t -> string_of_term t
+      in "Tail : [" ^ string_of_list t ^ "]"
 ;;
 (***********************************-EVAL-***********************************)
 
@@ -282,6 +339,7 @@ let rec free_vars tm = match tm with
       lunion (ldif (free_vars t2) [s]) (free_vars t1)
   | TmFix t ->
       free_vars t
+    (* Strings *)
   | TmString _ ->
       []
   | TmConcat (t1, t2) ->
@@ -290,6 +348,17 @@ let rec free_vars tm = match tm with
       free_vars s
   | TmRest s ->
       free_vars s
+    (* Lists *)
+  | TmEmptyList ty -> 
+      []
+  | TmList (ty, h, t) ->
+      lunion (free_vars h) (free_vars t)
+  | TmIsEmptyList (ty, t)->
+      free_vars t
+  | TmHead (ty, t) ->
+      free_vars t
+  | TmTail (ty, t) ->
+      free_vars t
 ;;
 
 let rec fresh_name x l =
@@ -331,6 +400,7 @@ let rec subst x s tm = match tm with
                 TmLetIn (z, subst x s t1, subst x s (subst y (TmVar z) t2))
   | TmFix t ->
       TmFix (subst x s t)
+    (* Strings *)
   | TmString t ->
       TmString t
   | TmConcat (t1, t2) ->
@@ -339,6 +409,17 @@ let rec subst x s tm = match tm with
       TmFirst (subst x s t)
   | TmRest t ->
       TmRest (subst x s t)
+    (* Lists *)
+  | TmEmptyList ty ->
+      tm 
+  | TmList (ty, h, t) ->
+      TmList (ty, (subst x s h), (subst x s t))
+  | TmIsEmptyList (ty, t) ->
+      TmIsEmptyList (ty, subst x s t)
+  | TmHead (ty, t) ->
+      TmHead (ty, subst x s t)
+  | TmTail (ty, t) ->
+      TmTail (ty, subst x s t)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -352,6 +433,8 @@ let rec isval tm = match tm with
   | TmFalse -> true
   | TmAbs _ -> true
   | TmString _ -> true
+  | TmEmptyList _ -> true
+  | TmList (_, h, t) -> isval h && isval t
   | t when isnumericval t -> true
   | _ -> false
 ;;
@@ -433,6 +516,7 @@ let rec eval1 ctx tm = match tm with
   | TmFix t1 ->
       let t1' = eval1 ctx t1 in 
       TmFix t1'
+    (* Strings *)
     (* E-Concat *)
   | TmConcat (TmString s1, TmString s2) ->
       TmString (s1 ^ s2)
@@ -444,18 +528,50 @@ let rec eval1 ctx tm = match tm with
   | TmConcat (t1, t2) ->
       let t1' = eval1 ctx t1 in 
       TmConcat (t1', t2)
+    (* E-First1 *)
   | TmFirst (TmString s) ->
       if String.length s < 1 then TmString ""
       else TmString (String.make 1 s.[0])
+    (* E-First2 *)
   | TmFirst s ->
       let s' = eval1 ctx s in
       TmFirst s'
+    (* E-Rest1 *)
   | TmRest (TmString s) ->
       if String.length s < 2 then TmString ""
       else TmString (String.sub s 1 ((String.length s)-1))
+    (* E-Rest2 *)
   | TmRest s ->
       let s' = eval1 ctx s in
       TmRest s'
+    (* Lists *)
+    (* E-Cons2 *)
+  | TmList (ty, h, t) when isval h ->
+      TmList (ty, h, eval1 ctx t)
+    (* E-Cons1 *)
+  | TmList (ty, h, t) ->
+      TmList (ty, eval1 ctx h, t)
+    (* E-IsNilNil *)
+  | TmIsEmptyList (ty, TmEmptyList _) ->
+      TmTrue
+    (* E-IsNilCons *)
+  | TmIsEmptyList (ty, TmList (_, _, _)) ->
+      TmFalse
+    (* E-IsNil *)
+  | TmIsEmptyList (ty, t) ->
+      TmIsEmptyList (ty, eval1 ctx t)
+    (* E-HeadCons *)
+  | TmHead (ty, TmList(_, h, _)) ->
+      h
+    (* E-Head *)
+  | TmHead (ty, t) ->
+      TmHead (ty, eval1 ctx t)
+    (* E-TailCons *)
+  | TmTail (ty, TmList(_, _, t)) ->
+      t
+    (* E-Tail *)
+  | TmTail (ty, t) ->
+      TmTail (ty, eval1 ctx t)
 
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)
