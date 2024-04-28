@@ -8,6 +8,9 @@ type ty =
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
+  | TyTuple of ty list (*new*)
+  | TyRecord of (string * ty) list (*new*)
+
 ;;
 
 
@@ -29,6 +32,12 @@ type term =
   | TmConcat of term * term
   | TmFirst of term
   | TmRest of term
+  (* Tuplas *)
+  | TmTuple of term list
+  | TmProj of term * int
+  (* record *)
+  | TmRecord of (string * term) list
+  | TmField of term * string 
 ;;
 
 (* Command *)
@@ -89,6 +98,11 @@ let rec string_of_ty ty = match ty with
       "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyDeclared str ->
       str
+  | TyTuple tys ->
+      "(" ^ String.concat ", " (List.map string_of_ty tys) ^ ")"
+  | TyRecord fields ->
+      "{" ^ String.concat ", " (List.map (fun (field, ty) -> field ^ ": " ^ string_of_ty ty) fields) ^ "}"
+ 
 ;;
 
 let rec convert_type ctx ty = match ty with
@@ -102,7 +116,13 @@ let rec convert_type ctx ty = match ty with
       TyArr (convert_type ctx t1, convert_type ctx t2)
   | TyDeclared ty ->
       getbinding_type ctx ty
+  | TyTuple tys ->
+      TyTuple (List.map (convert_type ctx) tys)
+  | TyRecord field_types ->
+      TyRecord (List.map (fun (f, ty) -> (f, convert_type ctx ty)) field_types)
 ;;
+
+
 
 exception Type_error of string
 ;;
@@ -200,6 +220,40 @@ let rec typeof ctx tm = match tm with
   | TmRest s ->
       if typeof ctx s == TyString then TyString
       else raise (Type_error "argument of 'rest' is not a string")
+  (* Tuplas new*)
+  | TmTuple tms -> 
+      let tys = List.map (typeof ctx) tms in
+      TyTuple tys
+  | TmProj (tm, i) -> 
+    let ty = typeof ctx tm in
+    match ty with
+    | TyTuple tys ->
+      if i < 1 || i > List.length tys then
+        raise (Type_error "projecting from a non-tuple")
+  (* Record new*)
+  | TyRecord fields ->
+    let tys = List.map (fun (_, tm) -> typeof ctx tm) fields in
+    let field_types = List.combine (List.map fst fields) tys in
+    TyRecord field_types
+
+  (* T-Field *)
+  | TmField (tm, field) ->
+    let ty = typeof ctx tm in
+    match ty with
+    | TyRecord field_types ->
+        let rec find_field = function
+          | [] ->
+              raise (Type_error "field not found")
+          | (f, ty) :: _ when f = field ->
+              ty
+          | _ :: rest ->
+              find_field rest
+        in
+        find_field field_types
+    | _ ->
+        raise (Type_error "accessing a field from a non-record")
+
+
 ;;
 
 
@@ -244,6 +298,16 @@ let rec string_of_term = function
       string_of_term s
   | TmRest s ->
       string_of_term s
+  (*tuplas*)
+  | TmTuple tms ->
+      "(" ^ String.concat ", " (List.map (string_of_term ctx) tms) ^ ")"
+  | TmProj (tm, i) ->
+      "(" ^ string_of_term ctx tm ^ ")." ^ string_of_int i
+  (*records*)
+  | TmRecord fields ->
+      "{ " ^ String.concat "; " (List.map (fun (f, tm) -> f ^ " = " ^ string_of_term ctx tm) fields) ^ " }"
+  | TmField (tm, field) ->
+      "(" ^ string_of_term ctx tm ^ ")." ^ field
 ;;
 (***********************************-EVAL-***********************************)
 
@@ -290,55 +354,75 @@ let rec free_vars tm = match tm with
       free_vars s
   | TmRest s ->
       free_vars s
+  (*Tuplas*)
+  | TmTuple tms ->
+      List.fold_left lunion [] (List.map free_vars tms)
+  | TmProj (tm, i) ->
+      free_vars tm
+  (*Record*)
+  | TmRecord fields ->
+      List.fold_left lunion [] (List.map (fun (_, tm) -> free_vars tm) fields)
+  | TmField (tm, field) ->
+      free_vars tm  
 ;;
 
 let rec fresh_name x l =
   if not (List.mem x l) then x else fresh_name (x ^ "'") l
 ;;
     
-let rec subst x s tm = match tm with
+let rec subst ctx x s tm = match tm with
     TmTrue ->
       TmTrue
   | TmFalse ->
       TmFalse
   | TmIf (t1, t2, t3) ->
-      TmIf (subst x s t1, subst x s t2, subst x s t3)
+      TmIf (subst ctx x s t1, subst ctx x s t2, subst ctx x s t3)
   | TmZero ->
       TmZero
   | TmSucc t ->
-      TmSucc (subst x s t)
+      TmSucc (subst ctx x s t)
   | TmPred t ->
-      TmPred (subst x s t)
+      TmPred (subst ctx x s t)
   | TmIsZero t ->
-      TmIsZero (subst x s t)
+      TmIsZero (subst ctx x s t)
   | TmVar y ->
       if y = x then s else tm
   | TmAbs (y, tyY, t) -> 
       if y = x then tm
       else let fvs = free_vars s in
            if not (List.mem y fvs)
-           then TmAbs (y, tyY, subst x s t)
+           then TmAbs (y, tyY, subst ctx x s t)
            else let z = fresh_name y (free_vars t @ fvs) in
-                TmAbs (z, tyY, subst x s (subst y (TmVar z) t))  
+                TmAbs (z, tyY, subst ctx x s (subst ctx y (TmVar z) t))  
   | TmApp (t1, t2) ->
-      TmApp (subst x s t1, subst x s t2)
+      TmApp (subst ctx x s t1, subst ctx x s t2)
   | TmLetIn (y, t1, t2) ->
-      if y = x then TmLetIn (y, subst x s t1, t2)
+      if y = x then TmLetIn (y, subst ctx x s t1, t2)
       else let fvs = free_vars s in
            if not (List.mem y fvs)
-           then TmLetIn (y, subst x s t1, subst x s t2)
+           then TmLetIn (y, subst ctx x s t1, subst ctx x s t2)
            else let z = fresh_name y (free_vars t2 @ fvs) in
-                TmLetIn (z, subst x s t1, subst x s (subst y (TmVar z) t2))
+                TmLetIn (z, subst ctx x s t1, subst ctx x s (subst ctx y (TmVar z) t2))
   | TmFix t ->
-      TmFix (subst x s t)
+      TmFix (subst ctx x s t)
   | TmString t ->
       TmString t
   | TmConcat (t1, t2) ->
-      TmConcat (subst x s t1,subst x s t2)
+      TmConcat (subst ctx x s t1,subst ctx x s t2)
   | TmFirst t ->
-      TmFirst (subst x s t)
+      TmFirst (subst ctx x s t)
   | TmRest t ->
-      TmRest (subst x s t)
+      TmRest (subst ctx x s t)
+  (*Tuplas*)
+  | TmTuple tms ->
+      TmTuple (List.map (subst x s) tms)
+  | TmProj (tm, i) ->
+      TmProj (subst x s tm, i)
+  (*Record*)
+  | TmRecord fields ->
+      TmRecord (List.map (fun (f, tm) -> (f, subst x s tm)) fields)
+  | TmField (tm, field) ->
+      TmField (subst x s tm, field)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -351,8 +435,13 @@ let rec isval tm = match tm with
     TmTrue  -> true
   | TmFalse -> true
   | TmAbs _ -> true
-  | TmString _ -> true
+  | TmString _ -> True
+  | TmRecord ((_,h)::t) -> (&&) (isval h) (isval (TmRecord t))
   | t when isnumericval t -> true
+  (*new*)
+  | TmTuple tms -> List.for_all isval tms
+  | TmRecord [] -> true
+  | TmRecord fields -> List.for_all (fun (_, tm) -> isval tm) fields
   | _ -> false
 ;;
 
@@ -406,7 +495,7 @@ let rec eval1 ctx tm = match tm with
 
     (* E-AppAbs *)
   | TmApp (TmAbs(x, _, t12), v2) when isval v2 ->
-      subst x v2 t12
+      subst ctx x v2 t12
 
     (* E-App2: evaluate argument before applying function *)
   | TmApp (v1, t2) when isval v1 ->
@@ -420,7 +509,7 @@ let rec eval1 ctx tm = match tm with
 
     (* E-LetV *)
   | TmLetIn (x, v1, t2) when isval v1 ->
-      subst x v1 t2
+      subst ctx x v1 t2
 
     (* E-Let *)
   | TmLetIn(x, t1, t2) ->
@@ -428,7 +517,7 @@ let rec eval1 ctx tm = match tm with
       TmLetIn (x, t1', t2)
     (* E-FixBeta *)
   | TmFix (TmAbs (x, _, t2)) ->
-      subst x tm t2
+      subst ctx x tm t2
     (* E-Fix *)
   | TmFix t1 ->
       let t1' = eval1 ctx t1 in 
@@ -456,9 +545,48 @@ let rec eval1 ctx tm = match tm with
   | TmRest s ->
       let s' = eval1 ctx s in
       TmRest s'
-
+  
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)
+  (*Tuplas*)
+  
+  (* E-Tuple *)
+  | TmTuple tms ->
+      let tms' = List.map (eval1 ctx) tms in
+      TmTuple tms'
+
+    (* E-Proj *)
+  | TmProj (tm, i) ->
+      let tm' = eval1 ctx tm in
+      match tm' with
+      | TmTuple tms ->
+          List.nth tms (i - 1)
+      | _ ->
+          raise NoRuleApplies
+
+    (* E-Record *)
+  | TmRecord fields ->
+      let fields' = List.map (fun (f, tm) -> (f, eval1 ctx tm)) fields in
+      TmRecord fields'
+
+    (* E-Field *)
+  | TmField (tm, field) ->
+      let tm' = eval1 ctx tm in
+      match tm' with
+      | TmRecord fields ->
+          let rec find_field = function
+            | [] ->
+                raise NoRuleApplies
+            | (f, tm) :: _ when f = field ->
+                tm
+            | _ :: rest ->
+                find_field rest
+          in
+          find_field fields
+      | _ ->
+          raise NoRuleApplies
+
+
   | _ ->
       raise NoRuleApplies
 ;;

@@ -5,6 +5,9 @@ type ty =
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
+  | TyTuple of ty list (*new*)
+  | TyRecord of (string * ty) list (*new*)
+
 ;; 
 
 type term =
@@ -24,6 +27,13 @@ type term =
   | TmConcat of term * term
   | TmFirst of term
   | TmRest of term
+  (*tupla*)
+  | TmTuple of term list
+  | TmProj of term * int
+  (*record*)
+  | TmRecord of (string * term) list
+  | TmField of term * string 
+
 ;;
 
 type command =
