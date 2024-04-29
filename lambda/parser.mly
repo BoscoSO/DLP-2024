@@ -52,8 +52,8 @@
 s :
     term EOF
         { EvalOfTerm $1 }
-    | TYPE ty EOF
-        { EvalOfType $2 }
+    | ty EOF
+        { EvalOfType $1 }
     | IDV EQ term EOF
         { BindOfTerm ($1, $3) }
     | IDT EQ ty EOF

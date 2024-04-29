@@ -8,7 +8,6 @@ rule token = parse
     [' ' '\t']    { token lexbuf }
   | "lambda"      { LAMBDA }
   | "L"           { LAMBDA }
-  | "type"        { TYPE }
   | "true"        { TRUE }
   | "false"       { FALSE }
   | "if"          { IF }

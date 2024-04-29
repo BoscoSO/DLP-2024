@@ -38,7 +38,7 @@ Cambios en el lambda.ml
 - El tipo contexto ahora es una lista de (string * binding)
 - El tipo binding puede ser | BindTy of ty | BindTm of (ty * term)
 - Esto simplifica las funciones de add y getbinding
-En el lexer está IDT y TYPE. IDT es el identificador de tipo y type es para comprobar
+En el lexer está IDT que es el identificador de tipo
 En el parser cree
 - El tipo command lo he cambiado bastante, ahora puede tener EvalOfTerm, EvalOfType, BindOfTerm o BindOfType
 - Cree una funcion convert_type ctx ty que convierte un tipo TyDeclared en el tipo basico del que deriva
@@ -48,7 +48,7 @@ Cambios en lambda.mli
 - Añadir los cambios que hice en el .ml
 
 Cambios en el lexer.mll
-- Añadidos los tokens IDT y TYPE
+- Añadidos los tokens IDT
 
 Cambios en el parser.mly
 - Añadir esos nuevos tokens
@@ -60,8 +60,8 @@ Cambios en el parser.mly
 - val : x : Nat = 10
 >> N = Nat;;	/*esto seguiria la forma IDT EQ ty EOF en el parser*/
 - : N = Nat
->> type N;;
-- : type = Nat  /*usando type te dice de que tipo es el tipo creado*/
+>> N;;
+- : type = Nat  /*te dice de que tipo es el tipo creado*/
 ```
 
 
@@ -143,3 +143,23 @@ letrec map : [Nat] -> (Nat -> Nat) -> [Nat] =
 		else [(f (hd l : Nat)), map (tl l : Nat) f] : Nat;;
 ```
 *Note that these functions are implemented only to be used on lists of Nat*
+
+9. __Subtyping__
+We implemented subtyping.
+By creating a function subtypeof, that makes use of the convert_type function, we made the language able to work with terms with different types as long as one is a subtype of the other.
+This new function subtypeof is used in the typeof function in cases such as TmApp, TmFix and the diferent typing rules for Strings and Lists
+```
+>> N = Nat;;
+- : N = Nat
+>> N2 = Nat;;
+- : N2 = Nat
+>> l = [1, [2, [] : N2] : N2] : N2;;  
+- : val l : N2 list = [1, 2]
+>> l2 = [1, [2, [3, [] : N] : Nat] : N] : Nat;;
+- : val l2 : Nat list = [1, 2, 3]
+
+/* using the exact same implementation of the append fucntion previously defined */
+
+>> append l l2;;
+- : Nat list = [1, 2, 1, 2, 3]
+```

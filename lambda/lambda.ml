@@ -117,6 +117,13 @@ let rec convert_type ctx ty = match ty with
 exception Type_error of string
 ;;
 
+let rec subtypeof ctx t1 t2 = match (t1, t2) with
+    (TyArr(a1, a2), TyArr(b1, b2)) ->
+      (subtypeof ctx a1 b1) && (subtypeof ctx a2 b2)
+  | (t1, t2) ->
+      (convert_type ctx t1) = (convert_type ctx t2)
+;;
+
 let rec typeof ctx tm = match tm with
     (* T-True *)
     TmTrue ->
@@ -156,7 +163,7 @@ let rec typeof ctx tm = match tm with
 
     (* T-Var *)
   | TmVar x ->
-      (try getbinding_type ctx x with
+      (try convert_type ctx (getbinding_type ctx x) with
        _ -> raise (Type_error ("no binding type for variable " ^ x)))
 
     (* T-Abs *)
@@ -172,7 +179,7 @@ let rec typeof ctx tm = match tm with
       let tyT2 = typeof ctx t2 in
       (match tyT1 with
            TyArr (tyT11, tyT12) ->
-             if tyT2 = tyT11 then tyT12
+             if subtypeof ctx tyT2 tyT11 then tyT12
              else
 
                 raise (Type_error ("parameter type mismatch"))
@@ -189,7 +196,7 @@ let rec typeof ctx tm = match tm with
       let tyT1 = typeof ctx t1 in 
       (match tyT1 with
         TyArr (tyT11, tyT12) ->
-          if tyT11 = tyT12 then tyT12
+          if subtypeof ctx tyT11 tyT12 then tyT12
           else raise (Type_error "result of body not compatible with domain")
           | _ -> raise (Type_error "arrow type expected"))
 
@@ -205,10 +212,10 @@ let rec typeof ctx tm = match tm with
         | (TyString, _) -> raise (Type_error "second argument of concat is not a string")
         | (_, _) -> raise (Type_error "none of the arguments of concat are strings"))
   | TmFirst s ->
-      if typeof ctx s = TyString then TyString
+      if subtypeof ctx (typeof ctx s) TyString then TyString
       else raise (Type_error "argument of 'first' is not a string")
   | TmRest s ->
-      if typeof ctx s = TyString then TyString
+      if subtypeof ctx (typeof ctx s) TyString then TyString
       else raise (Type_error "argument of 'rest' is not a string")
     (* List Rules *)
     (* T-Nil *)
@@ -218,19 +225,19 @@ let rec typeof ctx tm = match tm with
   | TmList (ty, h, t) ->
       let tyHD = typeof ctx h in 
       let tyTL = typeof ctx t in
-      if (tyHD = ty) && (tyTL = TyList ty) then TyList ty
+      if subtypeof ctx tyHD ty && subtypeof ctx tyTL (TyList ty) then TyList ty
       else raise (Type_error ("type mismatch in elements of " ^ string_of_ty ty ^ " list"))
     (* T-IsNil *)
   | TmIsEmptyList (ty, t) ->
-      if typeof ctx t = TyList ty then TyBool
+      if subtypeof ctx (typeof ctx t) (TyList ty) then TyBool
       else raise (Type_error "argument of 'isEmptyList' is not a list")
     (* T-Head *)
   | TmHead (ty, t) ->
-      if typeof ctx t = TyList ty then ty
+      if subtypeof ctx (typeof ctx t) (TyList ty) then ty
       else raise (Type_error "argument of 'head' is not a list")
     (* T-Tail *)
   | TmTail (ty, t) ->
-      if typeof ctx t = TyList ty then TyList ty
+      if subtypeof ctx (typeof ctx t) (TyList ty) then TyList ty
       else raise (Type_error "argument of 'tail' is not a list")
 
 ;;
