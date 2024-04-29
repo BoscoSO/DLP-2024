@@ -83,3 +83,8 @@ letrec append : [Nat] -> [Nat] -> [Nat] =
 	lambda l1 : [Nat]. lambda l2 : [Nat].
 		if (isEmptyList l1 : Nat) then l2
 		else [(hd l1 : Nat), append (tl l1 : Nat) l2] : Nat;;
+
+letrec map : [Nat] -> (Nat -> Nat) -> [Nat] = 
+	lambda l : [Nat]. lambda f : (Nat -> Nat).
+		if (isEmptyList l : Nat) then ([] : Nat)
+		else [(f (hd l : Nat)), map (tl l : Nat) f] : Nat;;
