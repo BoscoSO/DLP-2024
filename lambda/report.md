@@ -88,7 +88,7 @@ val x : String = "abcde"
 - : String = ""
 ```
 
-4. __Lists__
+8. __Lists__
 We implemented lists.
 First we added in both lambda.ml and lambda.mli the type TyList and the terms TmList, TmEmptyList, TmIsEmptyList, TmHead and TmTail.
 Then, in the lambda.ml file, we had to add the evaluation and typing rules for the lists in both the eval and typeof functions, and also modify some other functions such as string_of_term, string_of_ty, free_vars, subst and isval
@@ -120,14 +120,26 @@ We also implemented the functions isEmptyList, head and tail to work with functi
 >> hd [1, [2, [] : Nat] : Nat] : Nat : Nat;;
 - : Nat = 1
 ```
-You can use this to implement new other functions such as
+You can create new functions making use of this implementation. For example
+A function to calculate the length of a list
 ```
 letrec length : [Nat] -> Nat =
-	lambda list : [Nat].
-		if (isEmptyList list : Nat) then 0
-		else succ (length (tl list : Nat));;
-
-letrec append
-
-letrec map
+	lambda l : [Nat].
+		if (isEmptyList l : Nat) then 0
+		else succ (length (tl l : Nat));;
 ```
+A function to append two lists
+```
+letrec append : [Nat] -> [Nat] -> [Nat] = 
+	lambda l1 : [Nat]. lambda l2 : [Nat].
+		if (isEmptyList l1 : Nat) then l2
+		else [(hd l1 : Nat), append (tl l1 : Nat) l2] : Nat;;
+```
+A map function
+```
+letrec map : [Nat] -> (Nat -> Nat) -> [Nat] = 
+	lambda l : [Nat]. lambda f : (Nat -> Nat).
+		if (isEmptyList l : Nat) then ([] : Nat)
+		else [(f (hd l : Nat)), map (tl l : Nat) f] : Nat;;
+```
+*Note that these functions are implemented only to be used on lists of Nat*

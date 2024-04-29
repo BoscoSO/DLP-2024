@@ -32,7 +32,6 @@ rule token = parse
   | "Bool"        { BOOL }
   | "Nat"         { NAT }
   | "String"      { STRING }
-  | "null"        { NULL }
   | '('           { LPAREN }
   | ')'           { RPAREN }
   | '['           { LBRACK }
@@ -43,9 +42,9 @@ rule token = parse
   | ':'           { COLON }
   | "->"          { ARROW }
   | ['0'-'9']+    { INTV (int_of_string (Lexing.lexeme lexbuf)) }
-  | ['a'-'z']['a'-'z' '_' '0'-'9']*
+  | ['a'-'z']['a'-'z' '_' '0'-'9' 'A'-'Z']*
                   { IDV (Lexing.lexeme lexbuf) }
-  | ['A'-'Z']['a'-'z' '_' '0'-'9']*
+  | ['A'-'Z']['a'-'z' '_' '0'-'9' 'A'-'Z']*
                   { IDT (Lexing.lexeme lexbuf) }
   | '"'[^ '"' '\n']*'"'
                   { let s = Lexing.lexeme lexbuf in STRINGV (String.sub s 1 (String.length s - 2))}
