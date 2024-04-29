@@ -26,8 +26,7 @@
 %token NAT
 %token STRING
 %token NULL
-%token LIST
-%token LISTV
+%token COMMA
 %token FIX
 %token LPAREN
 %token RPAREN
@@ -94,16 +93,16 @@ appTerm :
       { TmRest $2 }
   | FIX atomicTerm
       { TmFix $2 }
-  | LISTV LBRACK ty RBRACK appTerm appTerm
-      { TmList ($3, $5, $6)}
-  | ISEMPTYLIST LBRACK appTerm RBRACK COLON ty
-      { TmIsEmptyList ($6, $3) }
-  | HEAD LBRACK appTerm RBRACK COLON ty
-      { TmHead ($6, $3) }
-  | TAIL LBRACK appTerm RBRACK COLON ty
-      { TmTail ($6, $3) }
-  | NULL LBRACK ty RBRACK
-      { TmEmptyList ($3) }
+  | LBRACK appTerm COMMA appTerm RBRACK COLON ty
+      { TmList ($7, $2, $4)}
+  | ISEMPTYLIST appTerm COLON ty
+      { TmIsEmptyList ($4, $2) }
+  | HEAD appTerm COLON ty
+      { TmHead ($4, $2) }
+  | TAIL appTerm COLON ty
+      { TmTail ($4, $2) }
+  | LBRACK RBRACK COLON ty 
+      { TmEmptyList ($4) }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 

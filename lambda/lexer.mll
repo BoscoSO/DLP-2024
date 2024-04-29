@@ -33,13 +33,12 @@ rule token = parse
   | "Nat"         { NAT }
   | "String"      { STRING }
   | "null"        { NULL }
-  | "List"        { LIST }
-  | "l."          { LISTV }
   | '('           { LPAREN }
   | ')'           { RPAREN }
   | '['           { LBRACK }
   | ']'           { RBRACK }
   | '.'           { DOT }
+  | ','           { COMMA }
   | '='           { EQ }
   | ':'           { COLON }
   | "->"          { ARROW }

@@ -87,3 +87,47 @@ val x : String = "abcde"
 >> rest "";;
 - : String = ""
 ```
+
+4. __Lists__
+We implemented lists.
+First we added in both lambda.ml and lambda.mli the type TyList and the terms TmList, TmEmptyList, TmIsEmptyList, TmHead and TmTail.
+Then, in the lambda.ml file, we had to add the evaluation and typing rules for the lists in both the eval and typeof functions, and also modify some other functions such as string_of_term, string_of_ty, free_vars, subst and isval
+We added new reserved tokens for the implementation of lists, which are "isEmptyList", "head", "hd", "tail", "tl" and ",".
+And finally we had to modify the parser to add the new rules for the lists.
+The rules in the parser for creating a list use recursivity, that is to say, when creating a list, you declare the first element, then declare a new list with the next element as its first element, then declare another list... and so on. Thus, for each list used you have to declare its type. Also, the last element of a list has to be an empty list.
+We also implemented the functions isEmptyList, head and tail to work with functions, all of which receive as parameters a list and its type
+```
+>> list = [1, [2, [3, [4, [] : Nat] : Nat] : Nat] : Nat] : Nat;;
+- : val list : Nat list = [1, 2, 3, 4]
+>> list2 = [true, [true, [false, [] : Bool] : Bool] : Bool] : Bool;;
+- : val list2 : Bool list = [true, true, false]
+>> list3 = ["hola", ["mundo", [] : String] : String] : String;;
+- : val list3 : String list = ["hola", "mundo"]
+>> isEmptyList list : Nat;;
+- : Bool = false
+>> isEmptyList [] : Nat : Nat;;
+- : Bool = true
+>> head list : Nat;;
+- : Nat = 1
+>> tail list : Nat;;
+- : Nat list = [2, 3, 4]
+>> hd list : Nat;;
+- : Nat = 1
+>> tl list : Nat;;
+- : Nat list = [2, 3, 4]
+>> tl list2 : Bool;;
+- : Bool list2 = [true, false]
+>> hd [1, [2, [] : Nat] : Nat] : Nat : Nat;;
+- : Nat = 1
+```
+You can use this to implement new other functions such as
+```
+letrec length : [Nat] -> Nat =
+	lambda list : [Nat].
+		if (isEmptyList list : Nat) then 0
+		else succ (length (tl list : Nat));;
+
+letrec append
+
+letrec map
+```
