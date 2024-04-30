@@ -25,21 +25,14 @@
 %token FIX
 %token LPAREN
 %token RPAREN
+%token LBRACE
+%token RBRACE
+%token COMMA
 %token DOT
 %token EQ
 %token COLON
 %token ARROW
 %token EOF
-
-
-%token TPAIR
-
-%token LBRACKET
-%token COMMA
-%token RBRACKET
-%token RCORCHETE
-%token LCORCHETE
-
 
 %token <int> INTV
 %token <string> IDV
@@ -49,6 +42,7 @@
 %start s
 %type <Lambda.command> s
 %type <Lambda.term> term
+%type <Lambda.ty> ty
 
 %%
 
@@ -102,8 +96,6 @@ appTerm :
 atomicTerm :
     LPAREN term RPAREN
       { $2 }
-  | LBRACKET appTerm COMMA appTerm RBRACKET
-      { TmPair ($2, $4) }
   | TRUE
       { TmTrue }
   | FALSE
@@ -117,20 +109,19 @@ atomicTerm :
             0 -> TmZero
           | n -> TmSucc (f (n-1))
         in f $1 }
-  | LBRACKET recordTM
-    { TmRecord $2 }
+  | LBRACE term_list RBRACE
+      { TmTuple $2 }
 
+term_list :
+    term
+      { [$1] }
+  | term_list COMMA term
+      { $1 @ [$3] }
 
-recordTM:
-   | RBRACKET { [] }
-   | STRINGV EQ appTerm RBRACKET { [($1,$3)] }
-   | STRINGV EQ appTerm COMMA recordTM { (($1,$3)::($5)) }
 
 ty :
     atomicTy
       { $1 }
-  | atomicTy TPAIR atomicTy
-      { TyPair ($1, $3) }
   | atomicTy ARROW ty
       { TyArr ($1, $3) }
 
@@ -145,10 +136,3 @@ atomicTy :
       { TyString }
   | IDT
       { TyDeclared $1 }
-  | LBRACKET recordTY
-      { TyRecord $2 }
-
-recordTY:
-   | RBRACKET { [] }
-   | STRINGV COLON ty RBRACKET { [($1,$3)] }
-   | STRINGV COLON ty COMMA recordTY { (($1,$3)::($5)) }
