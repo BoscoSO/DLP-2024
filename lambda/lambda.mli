@@ -5,8 +5,8 @@ type ty =
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
-  | TyTuple of ty list (*new
-  | TyRecord of (string * ty) list new*)
+  | TyTuple of ty list (*new*)
+  | TyRecord of (string * ty) list (*new*)
 
 ;; 
 
@@ -29,8 +29,8 @@ type term =
   | TmRest of term
   (*tupla*)
   | TmTuple of term list
-  (*record
-  | TmRecord of (string * term) list*)
+  (*record*)
+  | TmRecord of (string * term) list
   
 
 ;;

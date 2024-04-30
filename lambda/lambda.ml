@@ -9,6 +9,7 @@ type ty =
   | TyArr of ty * ty
   | TyDeclared of string
   | TyTuple of ty list (*new*)
+  | TyRecord of (string * ty) list (*new*)
 
 ;;
 
@@ -33,6 +34,8 @@ type term =
   | TmRest of term
   (* Tuplas *)
   | TmTuple of term list
+  (*record*)
+  | TmRecord of (string * term) list
 ;;
 
 (* Command *)
@@ -89,6 +92,7 @@ let rec string_of_ty ty = match ty with
   | TyArr (ty1, ty2) -> "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
   | TyDeclared str -> str
   | TyTuple tys -> "{" ^ String.concat ", " (List.map string_of_ty tys) ^ "}"
+  | TyRecord fields -> "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_ty t) fields) ^ "}"
 ;;
 let rec convert_type ctx ty = match ty with
     TyBool ->
@@ -103,6 +107,8 @@ let rec convert_type ctx ty = match ty with
       getbinding_type ctx ty
   | TyTuple tys ->
       TyTuple (List.map (convert_type ctx) tys)
+  | TyRecord fields ->
+      TyRecord (List.map (fun (f, t) -> (f, convert_type ctx t)) fields)
 ;;
 
 
@@ -197,23 +203,28 @@ let rec typeof ctx tm = match tm with
         | (_, TyString) -> raise (Type_error "first argument of concat is not a string")
         | (TyString, _) -> raise (Type_error "second argument of concat is not a string")
         | (_, _) -> raise (Type_error "none of the arguments of concat are strings"))
+
   | TmFirst s ->
-      let tyS = typeof ctx s in
-      (match tyS with
-        TyString -> TyString
-        | TyTuple (ty::_) -> ty
-        | _ -> raise (Type_error "argument of 'first' is not a string or tuple"))
+    let tyS = typeof ctx s in
+    (match tyS with
+      TyString -> TyString
+      | TyTuple (ty::_) -> ty
+      | TyRecord ((_,ty)::_) -> ty
+      | _ -> raise (Type_error "argument of 'first' is not a string, tuple or record"))
 
   | TmRest s ->
       let tyS = typeof ctx s in
       (match tyS with
         TyString -> TyString
         | TyTuple (_::ts) -> TyTuple ts
-        | _ -> raise (Type_error "argument of 'rest' is not a string or tuple"))
-  (* Tuplas new falta first y rest*)
+        | TyRecord (_::ts) -> TyRecord ts
+        | _ -> raise (Type_error "argument of 'rest' is not a string, tuple or record"))
+  (*tuplas*)
   | TmTuple ts ->
       TyTuple (List.map (typeof ctx) ts)
-
+  (*record*)
+  | TmRecord fields ->
+      TyRecord (List.map (fun (f, t) -> (f, typeof ctx t)) fields)
 
 ;;
 
@@ -262,6 +273,8 @@ let rec string_of_term = function
   (*tuplas*)
   | TmTuple ts ->
     "{" ^ String.concat ", " (List.map string_of_term ts) ^ "}"
+  | TmRecord fields ->
+    "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_term t) fields) ^ "}"
  
 ;;
 (***********************************-EVAL-***********************************)
@@ -310,7 +323,11 @@ let rec free_vars tm = match tm with
   | TmRest s ->
       free_vars s
   (*Tuplas*)
-  | TmTuple ts -> List.fold_left lunion [] (List.map free_vars ts)
+  | TmTuple ts -> 
+      List.fold_left lunion [] (List.map free_vars ts)
+  (*Records*)
+  | TmRecord fields ->
+      List.fold_left lunion [] (List.map (fun (_, t) -> free_vars t) fields)
 ;;
 
 let rec fresh_name x l =
@@ -363,6 +380,9 @@ let rec subst ctx x s tm = match tm with
   (*Tuplas*)
   | TmTuple ts -> 
       TmTuple (List.map (subst ctx x s) ts)
+  (*Records*)
+  | TmRecord fields ->
+      TmRecord (List.map (fun (f, t) -> (f, subst ctx x s t)) fields)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -378,6 +398,7 @@ let rec isval tm = match tm with
 | TmString _ -> true
 | t when isnumericval t -> true
 | TmTuple ts -> List.for_all isval ts (*tuplas*)
+| TmRecord fields -> List.for_all (fun (_,t) -> isval t) fields
 | _ -> false
 ;;
 
@@ -472,33 +493,34 @@ let rec eval1 ctx tm = match tm with
       TmConcat (t1', t2)
   
   (*Tuplas*)
-  
   | TmTuple ts ->
       let ts' = List.map (eval1 ctx) ts in
       TmTuple ts'
-  | TmFirst (TmTuple (t::_)) ->
-      t
-  | TmRest (TmTuple (_::ts)) ->
-      TmTuple ts
-  | TmFirst (TmTuple []) ->
-      raise (Type_error "Cannot take 'first' of an empty tuple")
-  | TmRest (TmTuple []) ->
-      raise (Type_error "Cannot take 'rest' of an empty tuple")
+  (* E-Record *)
+  | TmRecord fields ->
+      let evalField (f, t) = (f, eval1 ctx t) in
+      let evaluatedFields = List.map evalField fields in
+      TmRecord evaluatedFields
 
+  (* E-FirstRest *)
+  | TmFirst tm ->
+    (match tm with
+    | TmRecord ((_, t)::_) ->  t
+    | TmTuple (t::_) -> t
+    | TmString s when String.length s >= 1 -> TmString (String.make 1 s.[0])
+    | _ -> let tm' = eval1 ctx tm in TmFirst tm')
+  | TmFirst tm ->
+    raise (Type_error "Cannot take 'first' of an empty structure")
 
+  | TmRest tm ->
+    (match tm with
+    | TmRecord (_::fields) -> let restRecord = TmRecord fields in eval1 ctx restRecord
+    | TmTuple (_::ts) -> TmTuple ts
+    | TmString s when String.length s >= 2 -> TmString (String.sub s 1 ((String.length s) - 1))
+    | _ -> let tm' = eval1 ctx tm in TmRest tm')
+  | TmRest tm ->
+    raise (Type_error "Cannot take 'rest' of an empty structure")
 
-  | TmFirst (TmString s) ->
-      if String.length s < 1 then TmString ""
-      else TmString (String.make 1 s.[0])
-  | TmFirst s ->
-      let s' = eval1 ctx s in
-      TmFirst s'
-  | TmRest (TmString s) ->
-      if String.length s < 2 then TmString ""
-      else TmString (String.sub s 1 ((String.length s)-1))
-  | TmRest s ->
-      let s' = eval1 ctx s in
-      TmRest s'
   
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)

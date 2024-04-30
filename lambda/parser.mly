@@ -112,12 +112,24 @@ atomicTerm :
   | LBRACE term_list RBRACE
       { TmTuple $2 }
 
+  | LBRACE record_list RBRACE
+      { TmRecord $2 }
+
 term_list :
     term
       { [$1] }
   | term_list COMMA term
       { $1 @ [$3] }
 
+record_list :
+    record_field
+      { [$1] }
+  | record_list COMMA record_field
+      { $1 @ [$3] }
+
+record_field:
+    IDV EQ term
+      { ( $1, $3 ) }
 
 ty :
     atomicTy
