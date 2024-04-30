@@ -88,3 +88,10 @@ letrec map : [Nat] -> (Nat -> Nat) -> [Nat] =
 	lambda l : [Nat]. lambda f : (Nat -> Nat).
 		if (isEmptyList l : Nat) then ([] : Nat)
 		else [(f (hd l : Nat)), map (tl l : Nat) f] : Nat;;
+
+	~ Subtyping
+N = Nat;;
+N2 = Nat;;
+l = [1, [2, [] : N2] : N2] : N2;;
+l2 = [1, [2, [3, [] : N] : Nat] : N] : Nat;;
+append l l2;;
