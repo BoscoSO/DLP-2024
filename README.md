@@ -6,8 +6,8 @@
 - [x] __Recursividad__
 - [x] __Contexto global__
 - [x] __Tipo string__
-- [ ] __Tuplas(+0.5)__
-- [ ] _Registros (+1.5)_
+- [x] __Tuplas(+0.5)__
+- [x] _Registros (+1.5)_
 - [ ] _Variantes (+1.5)_
 - [ ] _Listas (+1)_ 
 - [ ] _Subtipado (+0.75)_
