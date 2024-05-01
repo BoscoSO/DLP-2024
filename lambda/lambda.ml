@@ -8,6 +8,9 @@ type ty =
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
+  | TyTuple of ty list (*new*)
+  | TyRecord of (string * ty) list (*new*)
+
 ;;
 
 
@@ -29,6 +32,10 @@ type term =
   | TmConcat of term * term
   | TmFirst of term
   | TmRest of term
+  (* Tuplas *)
+  | TmTuple of term list
+  (*record*)
+  | TmRecord of (string * term) list
 ;;
 
 (* Command *)
@@ -79,18 +86,14 @@ let getbinding_term ctx x = match List.assoc x ctx with
 (* TYPE MANAGEMENT (TYPING) *)
 
 let rec string_of_ty ty = match ty with
-    TyBool ->
-      "Bool"
-  | TyNat ->
-      "Nat"
-  | TyString ->
-      "String"
-  | TyArr (ty1, ty2) ->
-      "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
-  | TyDeclared str ->
-      str
+    TyBool -> "Bool"
+  | TyNat -> "Nat"
+  | TyString -> "String"
+  | TyArr (ty1, ty2) -> "(" ^ string_of_ty ty1 ^ ")" ^ " -> " ^ "(" ^ string_of_ty ty2 ^ ")"
+  | TyDeclared str -> str
+  | TyTuple tys -> "{" ^ String.concat ", " (List.map string_of_ty tys) ^ "}"
+  | TyRecord fields -> "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_ty t) fields) ^ "}"
 ;;
-
 let rec convert_type ctx ty = match ty with
     TyBool ->
       TyBool
@@ -102,7 +105,13 @@ let rec convert_type ctx ty = match ty with
       TyArr (convert_type ctx t1, convert_type ctx t2)
   | TyDeclared ty ->
       getbinding_type ctx ty
+  | TyTuple tys ->
+      TyTuple (List.map (convert_type ctx) tys)
+  | TyRecord fields ->
+      TyRecord (List.map (fun (f, t) -> (f, convert_type ctx t)) fields)
 ;;
+
+
 
 exception Type_error of string
 ;;
@@ -194,12 +203,29 @@ let rec typeof ctx tm = match tm with
         | (_, TyString) -> raise (Type_error "first argument of concat is not a string")
         | (TyString, _) -> raise (Type_error "second argument of concat is not a string")
         | (_, _) -> raise (Type_error "none of the arguments of concat are strings"))
+
   | TmFirst s ->
-      if typeof ctx s == TyString then TyString
-      else raise (Type_error "argument of 'first' is not a string")
+    let tyS = typeof ctx s in
+    (match tyS with
+      TyString -> TyString
+      | TyTuple (ty::_) -> ty
+      | TyRecord ((_,ty)::_) -> ty
+      | _ -> raise (Type_error "argument of 'first' is not a string, tuple or record"))
+
   | TmRest s ->
-      if typeof ctx s == TyString then TyString
-      else raise (Type_error "argument of 'rest' is not a string")
+      let tyS = typeof ctx s in
+      (match tyS with
+        TyString -> TyString
+        | TyTuple (_::ts) -> TyTuple ts
+        | TyRecord (_::ts) -> TyRecord ts
+        | _ -> raise (Type_error "argument of 'rest' is not a string, tuple or record"))
+  (*tuplas*)
+  | TmTuple ts ->
+      TyTuple (List.map (typeof ctx) ts)
+  (*record*)
+  | TmRecord fields ->
+      TyRecord (List.map (fun (f, t) -> (f, typeof ctx t)) fields)
+
 ;;
 
 
@@ -244,6 +270,12 @@ let rec string_of_term = function
       string_of_term s
   | TmRest s ->
       string_of_term s
+  (*tuplas*)
+  | TmTuple ts ->
+    "{" ^ String.concat ", " (List.map string_of_term ts) ^ "}"
+  | TmRecord fields ->
+    "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_term t) fields) ^ "}"
+ 
 ;;
 (***********************************-EVAL-***********************************)
 
@@ -290,55 +322,67 @@ let rec free_vars tm = match tm with
       free_vars s
   | TmRest s ->
       free_vars s
+  (*Tuplas*)
+  | TmTuple ts -> 
+      List.fold_left lunion [] (List.map free_vars ts)
+  (*Records*)
+  | TmRecord fields ->
+      List.fold_left lunion [] (List.map (fun (_, t) -> free_vars t) fields)
 ;;
 
 let rec fresh_name x l =
   if not (List.mem x l) then x else fresh_name (x ^ "'") l
 ;;
     
-let rec subst x s tm = match tm with
+let rec subst ctx x s tm = match tm with
     TmTrue ->
       TmTrue
   | TmFalse ->
       TmFalse
   | TmIf (t1, t2, t3) ->
-      TmIf (subst x s t1, subst x s t2, subst x s t3)
+      TmIf (subst ctx x s t1, subst ctx x s t2, subst ctx x s t3)
   | TmZero ->
       TmZero
   | TmSucc t ->
-      TmSucc (subst x s t)
+      TmSucc (subst ctx x s t)
   | TmPred t ->
-      TmPred (subst x s t)
+      TmPred (subst ctx x s t)
   | TmIsZero t ->
-      TmIsZero (subst x s t)
+      TmIsZero (subst ctx x s t)
   | TmVar y ->
       if y = x then s else tm
   | TmAbs (y, tyY, t) -> 
       if y = x then tm
       else let fvs = free_vars s in
            if not (List.mem y fvs)
-           then TmAbs (y, tyY, subst x s t)
+           then TmAbs (y, tyY, subst ctx x s t)
            else let z = fresh_name y (free_vars t @ fvs) in
-                TmAbs (z, tyY, subst x s (subst y (TmVar z) t))  
+                TmAbs (z, tyY, subst ctx x s (subst ctx y (TmVar z) t))  
   | TmApp (t1, t2) ->
-      TmApp (subst x s t1, subst x s t2)
+      TmApp (subst ctx x s t1, subst ctx x s t2)
   | TmLetIn (y, t1, t2) ->
-      if y = x then TmLetIn (y, subst x s t1, t2)
+      if y = x then TmLetIn (y, subst ctx x s t1, t2)
       else let fvs = free_vars s in
            if not (List.mem y fvs)
-           then TmLetIn (y, subst x s t1, subst x s t2)
+           then TmLetIn (y, subst ctx x s t1, subst ctx x s t2)
            else let z = fresh_name y (free_vars t2 @ fvs) in
-                TmLetIn (z, subst x s t1, subst x s (subst y (TmVar z) t2))
+                TmLetIn (z, subst ctx x s t1, subst ctx x s (subst ctx y (TmVar z) t2))
   | TmFix t ->
-      TmFix (subst x s t)
+      TmFix (subst ctx x s t)
   | TmString t ->
       TmString t
   | TmConcat (t1, t2) ->
-      TmConcat (subst x s t1,subst x s t2)
+      TmConcat (subst ctx x s t1,subst ctx x s t2)
   | TmFirst t ->
-      TmFirst (subst x s t)
+      TmFirst (subst ctx x s t)
   | TmRest t ->
-      TmRest (subst x s t)
+      TmRest (subst ctx x s t)
+  (*Tuplas*)
+  | TmTuple ts -> 
+      TmTuple (List.map (subst ctx x s) ts)
+  (*Records*)
+  | TmRecord fields ->
+      TmRecord (List.map (fun (f, t) -> (f, subst ctx x s t)) fields)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -348,13 +392,16 @@ let rec isnumericval tm = match tm with
 ;;
 
 let rec isval tm = match tm with
-    TmTrue  -> true
-  | TmFalse -> true
-  | TmAbs _ -> true
-  | TmString _ -> true
-  | t when isnumericval t -> true
-  | _ -> false
+  TmTrue -> true
+| TmFalse -> true
+| TmAbs _ -> true
+| TmString _ -> true
+| t when isnumericval t -> true
+| TmTuple ts -> List.for_all isval ts (*tuplas*)
+| TmRecord fields -> List.for_all (fun (_,t) -> isval t) fields
+| _ -> false
 ;;
+
 
 exception NoRuleApplies
 ;;
@@ -406,7 +453,7 @@ let rec eval1 ctx tm = match tm with
 
     (* E-AppAbs *)
   | TmApp (TmAbs(x, _, t12), v2) when isval v2 ->
-      subst x v2 t12
+      subst ctx x v2 t12
 
     (* E-App2: evaluate argument before applying function *)
   | TmApp (v1, t2) when isval v1 ->
@@ -420,7 +467,7 @@ let rec eval1 ctx tm = match tm with
 
     (* E-LetV *)
   | TmLetIn (x, v1, t2) when isval v1 ->
-      subst x v1 t2
+      subst ctx x v1 t2
 
     (* E-Let *)
   | TmLetIn(x, t1, t2) ->
@@ -428,7 +475,7 @@ let rec eval1 ctx tm = match tm with
       TmLetIn (x, t1', t2)
     (* E-FixBeta *)
   | TmFix (TmAbs (x, _, t2)) ->
-      subst x tm t2
+      subst ctx x tm t2
     (* E-Fix *)
   | TmFix t1 ->
       let t1' = eval1 ctx t1 in 
@@ -444,19 +491,34 @@ let rec eval1 ctx tm = match tm with
   | TmConcat (t1, t2) ->
       let t1' = eval1 ctx t1 in 
       TmConcat (t1', t2)
-  | TmFirst (TmString s) ->
-      if String.length s < 1 then TmString ""
-      else TmString (String.make 1 s.[0])
-  | TmFirst s ->
-      let s' = eval1 ctx s in
-      TmFirst s'
-  | TmRest (TmString s) ->
-      if String.length s < 2 then TmString ""
-      else TmString (String.sub s 1 ((String.length s)-1))
-  | TmRest s ->
-      let s' = eval1 ctx s in
-      TmRest s'
+  
+  (*Tuplas*)
+  | TmTuple ts ->
+      let ts' = List.map (eval1 ctx) ts in
+      TmTuple ts'
+  (* E-Record *)
+  | TmRecord fields ->
+      let evalField (f, t) = (f, eval1 ctx t) in
+      let evaluatedFields = List.map evalField fields in
+      TmRecord evaluatedFields
 
+  (* E-FirstRest *)
+  | TmFirst tm ->
+    (match tm with
+    | TmRecord ((_, t)::_) ->  t
+    | TmTuple (t::_) -> t
+    | TmString s when String.length s >= 1 -> TmString (String.make 1 s.[0])
+    | _ -> let tm' = eval1 ctx tm in TmFirst tm')
+ 
+  
+  | TmRest tm ->
+    (match tm with
+    | TmRecord (_::fields) -> TmRecord fields 
+    | TmTuple (_::ts) -> TmTuple ts
+    | TmString s when String.length s >= 2 -> TmString (String.sub s 1 ((String.length s) - 1))
+    | _ -> let tm' = eval1 ctx tm in TmRest tm')
+  
+  
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)
   | _ ->

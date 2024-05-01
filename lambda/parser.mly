@@ -25,6 +25,9 @@
 %token FIX
 %token LPAREN
 %token RPAREN
+%token LBRACE
+%token RBRACE
+%token COMMA
 %token DOT
 %token EQ
 %token COLON
@@ -39,6 +42,7 @@
 %start s
 %type <Lambda.command> s
 %type <Lambda.term> term
+%type <Lambda.ty> ty
 
 %%
 
@@ -105,6 +109,27 @@ atomicTerm :
             0 -> TmZero
           | n -> TmSucc (f (n-1))
         in f $1 }
+  | LBRACE term_list RBRACE
+      { TmTuple $2 }
+
+  | LBRACE record_list RBRACE
+      { TmRecord $2 }
+
+term_list :
+    term
+      { [$1] }
+  | term_list COMMA term
+      { $1 @ [$3] }
+
+record_list :
+    record_field
+      { [$1] }
+  | record_list COMMA record_field
+      { $1 @ [$3] }
+
+record_field:
+    IDV EQ term
+      { ( $1, $3 ) }
 
 ty :
     atomicTy
@@ -123,4 +148,3 @@ atomicTy :
       { TyString }
   | IDT
       { TyDeclared $1 }
-
