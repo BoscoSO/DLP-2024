@@ -509,18 +509,15 @@ let rec eval1 ctx tm = match tm with
     | TmTuple (t::_) -> t
     | TmString s when String.length s >= 1 -> TmString (String.make 1 s.[0])
     | _ -> let tm' = eval1 ctx tm in TmFirst tm')
-  | TmFirst tm ->
-    raise (Type_error "Cannot take 'first' of an empty structure")
-
+ 
+  
   | TmRest tm ->
     (match tm with
-    | TmRecord (_::fields) -> let restRecord = TmRecord fields in eval1 ctx restRecord
+    | TmRecord (_::fields) -> TmRecord fields 
     | TmTuple (_::ts) -> TmTuple ts
     | TmString s when String.length s >= 2 -> TmString (String.sub s 1 ((String.length s) - 1))
     | _ -> let tm' = eval1 ctx tm in TmRest tm')
-  | TmRest tm ->
-    raise (Type_error "Cannot take 'rest' of an empty structure")
-
+  
   
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)
