@@ -5,8 +5,10 @@ type ty =
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
-  | TyTuple of ty list (*new*)
-  | TyRecord of (string * ty) list (*new*)
+  | TyTuple of ty list 
+  | TyRecord of (string * ty) list 
+  | TyCustom of string
+  | TyVariant of (string * ty) list
 
 ;; 
 
@@ -31,8 +33,9 @@ type term =
   | TmTuple of term list
   (*record*)
   | TmRecord of (string * term) list
+  (*variant*)
+  | TmLabel of string * term * string
   
-
 ;;
 
 type command =

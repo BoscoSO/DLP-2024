@@ -2,18 +2,19 @@ open Option;;
 
 (* TYPE DEFINITIONS *)
 
+
 type ty =
     TyBool
   | TyNat
   | TyString
   | TyArr of ty * ty
   | TyDeclared of string
-  | TyTuple of ty list (*new*)
-  | TyRecord of (string * ty) list (*new*)
+  | TyTuple of ty list 
+  | TyRecord of (string * ty) list 
+  | TyCustom of string
+  | TyVariant of (string * ty) list
 
-;;
-
-
+;; 
 
 type term =
     TmTrue
@@ -32,12 +33,14 @@ type term =
   | TmConcat of term * term
   | TmFirst of term
   | TmRest of term
-  (* Tuplas *)
+  (*tupla*)
   | TmTuple of term list
   (*record*)
   | TmRecord of (string * term) list
+  (*variant*)
+  | TmLabel of string * term * string
+  
 ;;
-
 (* Command *)
 type command =
   | EvalOfTerm of term
@@ -93,6 +96,13 @@ let rec string_of_ty ty = match ty with
   | TyDeclared str -> str
   | TyTuple tys -> "{" ^ String.concat ", " (List.map string_of_ty tys) ^ "}"
   | TyRecord fields -> "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_ty t) fields) ^ "}"
+  | TyCustom str -> str
+  | TyVariant fields ->
+    let rec aux list = match list with
+      (i, h) :: [] -> i ^ " : " ^ string_of_ty h
+      | (i, h) :: t -> (i ^ " : " ^ string_of_ty h ^ ", ") ^ aux t
+      | [] -> ""
+    in "<" ^ aux fields ^ ">"
 ;;
 let rec convert_type ctx ty = match ty with
     TyBool ->
@@ -109,6 +119,10 @@ let rec convert_type ctx ty = match ty with
       TyTuple (List.map (convert_type ctx) tys)
   | TyRecord fields ->
       TyRecord (List.map (fun (f, t) -> (f, convert_type ctx t)) fields)
+  | TyCustom (var) -> 
+      getbinding_type ctx var
+  | TyVariant (pairList) -> 
+      let f (str, ty) = (str, convert_type ctx ty) in TyVariant (List.map f pairList)
 ;;
 
 
@@ -225,6 +239,21 @@ let rec typeof ctx tm = match tm with
   (*record*)
   | TmRecord fields ->
       TyRecord (List.map (fun (f, t) -> (f, typeof ctx t)) fields)
+  (*variants*)
+  | TmLabel (s, t, var) ->
+      let newTy =  getbinding_type  ctx var in
+      let f ty l = match ty with
+          TyVariant tyList ->
+            let matchType = List.assoc_opt s tyList in
+            let checkType matchTy = match matchTy with
+            | Some(labelType) ->
+                let typeOfT = typeof ctx t in
+                if labelType = typeOfT then ty
+                else raise (Type_error "Type mismatch between label type and type of 't'.")
+            | None -> raise (Type_error "Label doesn't match any label in variant.")
+            in checkType matchType
+          | _ -> raise (Type_error "Type invalid for invariant.")
+      in f newTy s
 
 ;;
 
@@ -276,6 +305,8 @@ let rec string_of_term = function
   | TmRecord fields ->
     "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_term t) fields) ^ "}"
  
+  | TmLabel (st, tm ,_) ->
+    "<" ^ st ^ " : " ^ string_of_term tm ^">"
 ;;
 (***********************************-EVAL-***********************************)
 
@@ -328,6 +359,8 @@ let rec free_vars tm = match tm with
   (*Records*)
   | TmRecord fields ->
       List.fold_left lunion [] (List.map (fun (_, t) -> free_vars t) fields)
+  (*variants*)
+  | TmLabel (_, t, _) -> free_vars t 
 ;;
 
 let rec fresh_name x l =
@@ -383,6 +416,10 @@ let rec subst ctx x s tm = match tm with
   (*Records*)
   | TmRecord fields ->
       TmRecord (List.map (fun (f, t) -> (f, subst ctx x s t)) fields)
+  (*variants*)
+  | TmLabel (str, t, var) -> 
+      TmLabel(str, subst ctx x s t, var)
+
 ;;
 
 let rec isnumericval tm = match tm with
@@ -518,6 +555,15 @@ let rec eval1 ctx tm = match tm with
     | TmString s when String.length s >= 2 -> TmString (String.sub s 1 ((String.length s) - 1))
     | _ -> let tm' = eval1 ctx tm in TmRest tm')
   
+  | TmLabel (s, t, var) ->
+    let t' = eval1 ctx t in
+    let var' = getbinding_type ctx var in
+    let f ty l = match ty with
+      | TyVariant tyList when List.exists ((=) l) (List.map fst tyList) ->
+        TmLabel (s, t', var)
+      | _ ->
+        raise (Type_error "Variable is not of type variant or label doesn't match any label.")
+    in f var' s
   
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)
