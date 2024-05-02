@@ -9,6 +9,7 @@ type ty =
   | TyRecord of (string * ty) list 
   | TyCustom of string
   | TyVariant of (string * ty) list
+  | TyAbsVal of ty
 
 ;; 
 
@@ -35,6 +36,7 @@ type term =
   | TmRecord of (string * term) list
   (*variant*)
   | TmLabel of string * term * string
+  | TmAbsVal of term
   
 ;;
 

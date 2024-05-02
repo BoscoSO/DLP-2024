@@ -36,7 +36,6 @@
 %token LANGLE
 %token RANGLE
 %token AS
-%token ADD
 %token ABS
 %token EOF
 
@@ -78,6 +77,8 @@ term :
       { TmLetIn ($2, $4, $6) }
   | LETREC IDV COLON ty EQ term IN term
       { TmLetIn ($2, TmFix (TmAbs ($2, $4, $6)), $8) }
+  | ABS term
+      {TmAbsVal $2}
 
 appTerm :
     atomicTerm
@@ -123,6 +124,8 @@ atomicTerm :
       { TmRecord []}
   | LBRACE record_list RBRACE
       { TmRecord $2 }
+  | ABS LPAREN term RPAREN
+      { TmAbsVal $3 }
 
 tuple_list :
     term
@@ -145,6 +148,10 @@ ty :
       { $1 }
   | atomicTy ARROW ty
       { TyArr ($1, $3) }
+  | ABS ty
+      { TyAbsVal $2 }
+
+
 
 atomicTy :
     LPAREN ty RPAREN  

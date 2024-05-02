@@ -39,7 +39,6 @@ rule token = parse
   | '<'         { LANGLE }
   | '>'         { RANGLE } 
   | "as"        { AS }
-  | "add"       { ADD }
   | "abs"       { ABS }
   | ['0'-'9']+  { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | ['a'-'z']['a'-'z' '_' '0'-'9']*

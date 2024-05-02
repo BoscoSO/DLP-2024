@@ -13,6 +13,7 @@ type ty =
   | TyRecord of (string * ty) list 
   | TyCustom of string
   | TyVariant of (string * ty) list
+  | TyAbsVal of ty (*new*)
 
 ;; 
 
@@ -39,6 +40,7 @@ type term =
   | TmRecord of (string * term) list
   (*variant*)
   | TmLabel of string * term * string
+  | TmAbsVal of term
   
 ;;
 (* Command *)
@@ -103,6 +105,7 @@ let rec string_of_ty ty = match ty with
       | (i, h) :: t -> (i ^ " : " ^ string_of_ty h ^ ", ") ^ aux t
       | [] -> ""
     in "<" ^ aux fields ^ ">"
+  | TyAbsVal ty -> "Abs(" ^ string_of_ty ty ^ ")"
 ;;
 let rec convert_type ctx ty = match ty with
     TyBool ->
@@ -123,6 +126,8 @@ let rec convert_type ctx ty = match ty with
       getbinding_type ctx var
   | TyVariant (pairList) -> 
       let f (str, ty) = (str, convert_type ctx ty) in TyVariant (List.map f pairList)
+  | TyAbsVal ty -> 
+      TyAbsVal ( convert_type ctx ty  )
 ;;
 
 
@@ -254,6 +259,10 @@ let rec typeof ctx tm = match tm with
             in checkType matchType
           | _ -> raise (Type_error "Type invalid for invariant.")
       in f newTy s
+  | TmAbsVal t ->
+      let tyT = typeof ctx t in
+      TyAbsVal tyT
+  
 
 ;;
 
@@ -299,14 +308,15 @@ let rec string_of_term = function
       string_of_term s
   | TmRest s ->
       string_of_term s
-  (*tuplas*)
   | TmTuple ts ->
     "{" ^ String.concat ", " (List.map string_of_term ts) ^ "}"
   | TmRecord fields ->
     "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_term t) fields) ^ "}"
- 
+  (*variantes*)
   | TmLabel (st, tm ,_) ->
     "<" ^ st ^ " : " ^ string_of_term tm ^">"
+  | TmAbsVal t ->
+    "abs(" ^ string_of_term t ^ ")"
 ;;
 (***********************************-EVAL-***********************************)
 
@@ -361,6 +371,7 @@ let rec free_vars tm = match tm with
       List.fold_left lunion [] (List.map (fun (_, t) -> free_vars t) fields)
   (*variants*)
   | TmLabel (_, t, _) -> free_vars t 
+  | TmAbsVal t -> free_vars t
 ;;
 
 let rec fresh_name x l =
@@ -419,7 +430,8 @@ let rec subst ctx x s tm = match tm with
   (*variants*)
   | TmLabel (str, t, var) -> 
       TmLabel(str, subst ctx x s t, var)
-
+  | TmAbsVal t -> 
+      TmAbsVal (subst ctx x s t)
 ;;
 
 let rec isnumericval tm = match tm with
@@ -436,6 +448,7 @@ let rec isval tm = match tm with
 | t when isnumericval t -> true
 | TmTuple ts -> List.for_all isval ts (*tuplas*)
 | TmRecord fields -> List.for_all (fun (_,t) -> isval t) fields
+| TmAbsVal _ -> true
 | _ -> false
 ;;
 
@@ -554,7 +567,7 @@ let rec eval1 ctx tm = match tm with
     | TmTuple (_::ts) -> TmTuple ts
     | TmString s when String.length s >= 2 -> TmString (String.sub s 1 ((String.length s) - 1))
     | _ -> let tm' = eval1 ctx tm in TmRest tm')
-  
+  (*Variantes*)
   | TmLabel (s, t, var) ->
     let t' = eval1 ctx t in
     let var' = getbinding_type ctx var in
@@ -564,7 +577,12 @@ let rec eval1 ctx tm = match tm with
       | _ ->
         raise (Type_error "Variable is not of type variant or label doesn't match any label.")
     in f var' s
-  
+  | TmAbsVal  t ->
+    (match eval1 ctx t with
+      | TmLabel ("zero",_,_) -> TmLabel ("zero", TmTrue, "pos")
+      | TmLabel ("pos",nv,_) -> TmLabel ("pos", nv, "pos")
+      | TmLabel ("neg",nv,_) -> TmLabel ("pos", nv, "pos")
+      | _ -> raise (Type_error "Argument of abs is not valid"))
   | TmVar x ->  
       getbinding_term ctx x (* Not necesary to handling error because typeof aldready did it *)
   | _ ->
