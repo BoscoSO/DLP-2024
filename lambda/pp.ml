@@ -100,10 +100,11 @@ let rec pp_term_aux = function
 		close_box();
 	| TmApp (t1, t2) ->
 		open_box 1;
+		print_string "(";
 		pp_term_aux t1;
-		print_string " (";
+		print_space();
 		pp_term_aux t2;
-		print_string ") ";
+		print_string ")";
 		close_box();
 	| TmLetIn (idv, t1, t2) -> 
 		open_box 1;
@@ -143,7 +144,7 @@ let rec pp_term_aux = function
 		pp_term_aux s;
 		close_box();
  	| TmList (_, _, _) as tm -> 
-		let print_list = function
+		let rec print_list = function
 			| TmEmptyList ty ->
 				open_box 1;
 				print_string "[] : ";
@@ -154,11 +155,11 @@ let rec pp_term_aux = function
 			| TmList (_, h, t) ->
 				pp_term_aux h;
 				print_string ", ";
-				pp_term_aux t;
+				print_list t;
 			| _ -> ()
 			in 
  		open_box 1;
-		print_string "List [";
+		print_string "[";
  		print_list tm;
 		print_string "]";
  		close_box (); 
