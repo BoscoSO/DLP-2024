@@ -2,6 +2,22 @@
 ## Programming Languages Design
 
 ### 1.- Improved functionalities
+2. __Pretty printer__
+To improve readability, we add a pretty printer making use of the Format module.
+We created 2 new files (pp.ml and pp.mli) in which we implement pp_type, pp_term_eval and pp_term_bind. This new functions, using Format's module's boxes, make the outputs of the language more human-readable
+```
+>> letrec length : [Nat] -> Nat =
+	lambda l : [Nat].
+		if (isEmptyList l : Nat) then 0
+		else succ (length (tl l : Nat));;
+ - : val 'length' : 'Nat' list -> Nat = 
+λl : 'Nat' list. 
+ if isemptylist  l  : Nat then 0 
+  else succ fix λlength : 'Nat' list -> Nat. 
+                 λl : 'Nat' list. 
+                  if isemptylist  l  : Nat then 0 
+                   else succ length (tail [l])   (tail [l]) 
+```
 
 ### 2.- Added Functionalities
 1. __Internal Fixed Point Combinator__
@@ -38,7 +54,7 @@ Cambios en el lambda.ml
 - El tipo contexto ahora es una lista de (string * binding)
 - El tipo binding puede ser | BindTy of ty | BindTm of (ty * term)
 - Esto simplifica las funciones de add y getbinding
-En el lexer está IDT y TYPE. IDT es el identificador de tipo y type es para comprobar
+En el lexer está IDT que es el identificador de tipo
 En el parser cree
 - El tipo command lo he cambiado bastante, ahora puede tener EvalOfTerm, EvalOfType, BindOfTerm o BindOfType
 - Cree una funcion convert_type ctx ty que convierte un tipo TyDeclared en el tipo basico del que deriva
@@ -48,7 +64,7 @@ Cambios en lambda.mli
 - Añadir los cambios que hice en el .ml
 
 Cambios en el lexer.mll
-- Añadidos los tokens IDT y TYPE
+- Añadidos los tokens IDT
 
 Cambios en el parser.mly
 - Añadir esos nuevos tokens
@@ -60,8 +76,8 @@ Cambios en el parser.mly
 - val : x : Nat = 10
 >> N = Nat;;	/*esto seguiria la forma IDT EQ ty EOF en el parser*/
 - : N = Nat
->> type N;;
-- : type = Nat  /*usando type te dice de que tipo es el tipo creado*/
+>> N;;
+- : type = Nat  /*te dice de que tipo es el tipo creado*/
 ```
 
 
@@ -86,4 +102,80 @@ val x : String = "abcde"
 - : String = ""
 >> rest "";;
 - : String = ""
+```
+
+8. __Lists__
+We implemented lists.
+First we added in both lambda.ml and lambda.mli the type TyList and the terms TmList, TmEmptyList, TmIsEmptyList, TmHead and TmTail.
+Then, in the lambda.ml file, we had to add the evaluation and typing rules for the lists in both the eval and typeof functions, and also modify some other functions such as string_of_term, string_of_ty, free_vars, subst and isval
+We added new reserved tokens for the implementation of lists, which are "isEmptyList", "head", "hd", "tail", "tl" and ",".
+And finally we had to modify the parser to add the new rules for the lists.
+The rules in the parser for creating a list use recursivity, that is to say, when creating a list, you declare the first element, then declare a new list with the next element as its first element, then declare another list... and so on. Thus, for each list used you have to declare its type. Also, the last element of a list has to be an empty list.
+We also implemented the functions isEmptyList, head and tail to work with functions, all of which receive as parameters a list and its type
+```
+>> list = [1, [2, [3, [4, [] : Nat] : Nat] : Nat] : Nat] : Nat;;
+- : val list : Nat list = [1, 2, 3, 4]
+>> list2 = [true, [true, [false, [] : Bool] : Bool] : Bool] : Bool;;
+- : val list2 : Bool list = [true, true, false]
+>> list3 = ["hola", ["mundo", [] : String] : String] : String;;
+- : val list3 : String list = ["hola", "mundo"]
+>> isEmptyList list : Nat;;
+- : Bool = false
+>> isEmptyList [] : Nat : Nat;;
+- : Bool = true
+>> head list : Nat;;
+- : Nat = 1
+>> tail list : Nat;;
+- : Nat list = [2, 3, 4]
+>> hd list : Nat;;
+- : Nat = 1
+>> tl list : Nat;;
+- : Nat list = [2, 3, 4]
+>> tl list2 : Bool;;
+- : Bool list2 = [true, false]
+>> hd [1, [2, [] : Nat] : Nat] : Nat : Nat;;
+- : Nat = 1
+```
+You can create new functions making use of this implementation. For example
+A function to calculate the length of a list
+```
+letrec length : [Nat] -> Nat =
+	lambda l : [Nat].
+		if (isEmptyList l : Nat) then 0
+		else succ (length (tl l : Nat));;
+```
+A function to append two lists
+```
+letrec append : [Nat] -> [Nat] -> [Nat] = 
+	lambda l1 : [Nat]. lambda l2 : [Nat].
+		if (isEmptyList l1 : Nat) then l2
+		else [(hd l1 : Nat), append (tl l1 : Nat) l2] : Nat;;
+```
+A map function
+```
+letrec map : [Nat] -> (Nat -> Nat) -> [Nat] = 
+	lambda l : [Nat]. lambda f : (Nat -> Nat).
+		if (isEmptyList l : Nat) then ([] : Nat)
+		else [(f (hd l : Nat)), map (tl l : Nat) f] : Nat;;
+```
+*Note that these functions are implemented only to be used on lists of Nat*
+
+9. __Subtyping__
+We implemented subtyping.
+By creating a function subtypeof, that makes use of the convert_type function, we made the language able to work with terms with different types as long as one is a subtype of the other.
+This new function subtypeof is used in the typeof function in cases such as TmApp, TmFix and the diferent typing rules for Strings and Lists
+```
+>> N = Nat;;
+- : N = Nat
+>> N2 = Nat;;
+- : N2 = Nat
+>> l = [1, [2, [] : N2] : N2] : N2;;  
+- : val l : N2 list = [1, 2]
+>> l2 = [1, [2, [3, [] : N] : Nat] : N] : Nat;;
+- : val l2 : Nat list = [1, 2, 3]
+
+/* using the exact same implementation of the append function previously defined */
+
+>> append l l2;;
+- : Nat list = [1, 2, 1, 2, 3]
 ```

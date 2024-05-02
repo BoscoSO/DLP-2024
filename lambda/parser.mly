@@ -19,15 +19,22 @@
 %token CONCAT
 %token FIRST
 %token REST
+%token ISEMPTYLIST
+%token HEAD
+%token TAIL
 %token BOOL
 %token NAT
 %token STRING
+%token NULL
+%token COMMA
 %token FIX
 %token LPAREN
 %token RPAREN
 %token LBRACE
 %token RBRACE
 %token COMMA
+%token LBRACK
+%token RBRACK
 %token DOT
 %token EQ
 %token COLON
@@ -49,8 +56,8 @@
 s :
     term EOF
         { EvalOfTerm $1 }
-    | TYPE ty EOF
-        { EvalOfType $2 }
+    | ty EOF
+        { EvalOfType $1 }
     | IDV EQ term EOF
         { BindOfTerm ($1, $3) }
     | IDT EQ ty EOF
@@ -90,6 +97,16 @@ appTerm :
       { TmRest $2 }
   | FIX atomicTerm
       { TmFix $2 }
+  | LBRACK appTerm COMMA appTerm RBRACK COLON ty
+      { TmList ($7, $2, $4)}
+  | ISEMPTYLIST appTerm COLON ty
+      { TmIsEmptyList ($4, $2) }
+  | HEAD appTerm COLON ty
+      { TmHead ($4, $2) }
+  | TAIL appTerm COLON ty
+      { TmTail ($4, $2) }
+  | LBRACK RBRACK COLON ty 
+      { TmEmptyList ($4) }
   | appTerm atomicTerm
       { TmApp ($1, $2) }
 
@@ -148,3 +165,6 @@ atomicTy :
       { TyString }
   | IDT
       { TyDeclared $1 }
+  | LBRACK ty RBRACK
+      { TyList ($2) }
+

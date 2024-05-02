@@ -7,7 +7,7 @@ type ty =
   | TyDeclared of string
   | TyTuple of ty list (*new*)
   | TyRecord of (string * ty) list (*new*)
-
+  | TyList of ty
 ;; 
 
 type term =
@@ -31,8 +31,11 @@ type term =
   | TmTuple of term list
   (*record*)
   | TmRecord of (string * term) list
-  
-
+  | TmList of ty * term * term 
+  | TmEmptyList of ty 
+  | TmIsEmptyList of ty * term 
+  | TmHead of ty * term 
+  | TmTail of ty * term
 ;;
 
 type command =
