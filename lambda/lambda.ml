@@ -752,9 +752,9 @@ let rec eval1 ctx tm = match tm with
     in f var' s
   | TmAbsVal  t ->
     (match eval1 ctx t with
-      | TmLabel ("zero",_,_) -> TmLabel ("zero", TmTrue, "pos")
-      | TmLabel ("pos",nv,_) -> TmLabel ("pos", nv, "pos")
-      | TmLabel ("neg",nv,_) -> TmLabel ("pos", nv, "pos")
+      | TmLabel ("zero",_,_) -> TmLabel ("zero", TmTrue, "Int")
+      | TmLabel ("pos",nv,_) -> TmLabel ("pos", nv, "Int")
+      | TmLabel ("neg",nv,_) -> TmLabel ("pos", nv, "Int")
       | _ -> raise (Type_error "Argument of abs is not valid"))
 
   | TmVar x ->  
