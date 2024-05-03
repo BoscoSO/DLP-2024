@@ -8,7 +8,7 @@
 - [x] __Tipo string__
 - [x] __Tuplas(+0.5)__
 - [x] _Registros (+1.5)_
-- [ ] _Variantes (+1.5)_
+- [x] _Variantes (+1.5)_
 - [x] _Listas (+1)_ 
 - [x] _Subtipado (+0.75)_
 - [x] __Documentación / en inglés (+1)__
