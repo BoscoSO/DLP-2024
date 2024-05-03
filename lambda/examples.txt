@@ -60,6 +60,43 @@ rest x;;
 first "";;
 rest "";;
 
+	~ Lists
+NatList = [Nat];;
+list = [1, [2, [3, [4, [] : Nat] : Nat] : Nat] : Nat] : Nat;;
+list2 = [true, [true, [false, [] : Bool] : Bool] : Bool] : Bool;;
+list3 = ["hola", ["mundo", [] : String] : String] : String;;
+listEmpty = [] : Nat;;
+isEmptyList list : Nat;;
+isEmptyList listEmpty : Nat;;
+head list : Nat;;
+hd list2 : Bool;;
+tail list3 : String;;
+tl list2 : Bool;;
+hd [1, [2, [] : Nat] : Nat] : Nat : Nat;;
+
+letrec length : [Nat] -> Nat =
+	lambda l : [Nat].
+		if (isEmptyList l : Nat) then 0
+		else succ (length (tl l : Nat));;
+
+letrec append : [Nat] -> [Nat] -> [Nat] = 
+	lambda l1 : [Nat]. lambda l2 : [Nat].
+		if (isEmptyList l1 : Nat) then l2
+		else [(hd l1 : Nat), append (tl l1 : Nat) l2] : Nat;;
+
+letrec map : [Nat] -> (Nat -> Nat) -> [Nat] = 
+	lambda l : [Nat]. lambda f : (Nat -> Nat).
+		if (isEmptyList l : Nat) then ([] : Nat)
+		else [(f (hd l : Nat)), map (tl l : Nat) f] : Nat;;
+
+	~ Subtyping
+N = Nat;;
+N2 = Nat;;
+l = [1, [2, [] : N2] : N2] : N2;;
+l2 = [1, [2, [3, [] : N] : Nat] : N] : Nat;;
+append l l2;;
+
+
 	~ Contexto
 
 x = true;;
