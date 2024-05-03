@@ -39,6 +39,7 @@ type term =
   | TmTuple of term list
   (*record*)
   | TmRecord of (string * term) list
+  | TmProj of term * string
   (*list*)
   | TmList of ty * term * term 
   | TmEmptyList of ty
@@ -265,6 +266,15 @@ let rec typeof ctx tm = match tm with
   (*record*)
   | TmRecord fields ->
       TyRecord (List.map (fun (f, t) -> (f, typeof ctx t)) fields);
+  | TmProj (field, s) ->
+    (match typeof ctx field with
+      | TyTuple fieldtys ->
+        (try let element = List.nth fieldtys (int_of_string s - 1) in element with
+          _ -> raise (Type_error ("Index " ^ s ^ " not found (type)")))
+      | TyRecord fieldtys ->
+        (try let ty = List.assoc s fieldtys in ty with
+          _ -> raise (Type_error ("Label " ^ s ^ " not found (type)")))
+      | _ -> raise (Type_error ("Unexpected type")))
     (* List Rules *)
     (* T-Nil *)
   | TmEmptyList t ->
@@ -356,7 +366,8 @@ let rec string_of_term = function
     "{" ^ String.concat ", " (List.map string_of_term ts) ^ "}"
   | TmRecord fields ->
     "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_term t) fields) ^ "}"
- 
+  | TmProj (t, s) ->
+    "p(" ^ s ^ ")" ^ "of" ^ string_of_term t
     (* Lists *)
   | TmEmptyList t ->
       "[]"
@@ -438,7 +449,18 @@ let rec free_vars tm = match tm with
   (*Records*)
   | TmRecord fields ->
       List.fold_left lunion [] (List.map (fun (_, t) -> free_vars t) fields)
-
+  | TmProj (t, s) ->
+      (match t with
+        | TmTuple fields ->
+          (try let element = List.nth fields (int_of_string s - 1) in free_vars element with
+            _ ->
+              raise (Type_error ("Index " ^ s ^ " not found (term)")))
+        | TmRecord fields ->
+          (try let element = List.assoc s fields in free_vars element with
+            _ ->
+              raise (Type_error ("Label " ^ s ^ " not found (term)")))
+        | _ ->
+          raise(Type_error("Unexpected type of term")))
     (* Lists *)
   | TmEmptyList ty -> 
       []
@@ -511,7 +533,10 @@ let rec subst ctx x s tm = match tm with
   (*Records*)
   | TmRecord fields ->
       TmRecord (List.map (fun (f, t) -> (f, subst ctx x s t)) fields);
-    (* Lists *)
+  | TmProj (field, str) ->  
+      TmProj(subst ctx x s field, str)
+
+  (* Lists *)
   | TmEmptyList ty ->
       tm 
   | TmList (ty, h, t) ->
@@ -674,8 +699,18 @@ let rec eval1 ctx tm = match tm with
     | TmString s when String.length s >= 2 -> TmString (String.sub s 1 ((String.length s) - 1))
     | _ -> let tm' = eval1 ctx tm in TmRest tm')
 
-    (* Lists *)
-    (* E-Cons2 *)
+  | TmProj (TmTuple fields as v1, lb) when isval v1 ->
+    (try List.nth fields (int_of_string lb - 1) with
+    _ -> raise NoRuleApplies)
+  | TmProj (TmRecord list as v, s) when isval v ->
+    (try List.assoc s list with
+    _ -> raise NoRuleApplies)
+  | TmProj (t1, lb) ->
+    let t1' = eval1 ctx t1 in
+    TmProj (t1', lb)
+  
+  (* Lists *)
+  (* E-Cons2 *)
   | TmList (ty, h, t) when isval h ->
       TmList (ty, h, eval1 ctx t)
     (* E-Cons1 *)

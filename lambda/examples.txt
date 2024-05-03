@@ -60,7 +60,9 @@ rest x;;
 first "";;
 rest "";;
 
+
 	~ Lists
+
 NatList = [Nat];;
 list = [1, [2, [3, [4, [] : Nat] : Nat] : Nat] : Nat] : Nat;;
 list2 = [true, [true, [false, [] : Bool] : Bool] : Bool] : Bool;;
@@ -89,7 +91,9 @@ letrec map : [Nat] -> (Nat -> Nat) -> [Nat] =
 		if (isEmptyList l : Nat) then ([] : Nat)
 		else [(f (hd l : Nat)), map (tl l : Nat) f] : Nat;;
 
+
 	~ Subtyping
+
 N = Nat;;
 N2 = Nat;;
 l = [1, [2, [] : N2] : N2] : N2;;
@@ -106,17 +110,32 @@ id x;;
 N=Nat
 lambda x : N. x;;
 
+
 	~ Tuplas
 
 tpl={1,2,"hey"};;
 first tpl;;
 rest tpl;;
 
+
+{1,2,3}.1;;
+(L x:{}. 1) {};;
+(L x:{Nat}. x.1) {1};;
+
+let f = lambda x:{Nat, Nat}. x.1 in f {1, 2};;
+
+
 	~ Records
 
 rcd={a=12, b=true, c="hey"};;
 first rcd;;
 rest rcd;;
+
+{x=1, y=2, z=3}.x;;
+(L x:{a:Nat, b:Nat}. x) {a=1, b=2};;
+(L x:{a:Nat, b:Nat}. x.a) {a=1, b=2};;
+let fa = lambda x:{a:Nat, b:Nat}. x.a in fa {a=1, b=2};;
+
 
 	~ Variantes
 
@@ -129,4 +148,6 @@ n5 = <neg=5> as Int;;
 abs p3;;
 abs n5;;
 abs z0;;
+
+
 

@@ -35,6 +35,7 @@ type term =
   | TmTuple of term list
   (*record*)
   | TmRecord of (string * term) list
+  | TmProj of term * string
   (*list*)
   | TmList of ty * term * term 
   | TmEmptyList of ty 

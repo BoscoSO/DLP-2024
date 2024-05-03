@@ -88,21 +88,21 @@ term :
       {TmAbsVal $2}
 
 appTerm :
-    atomicTerm
+    pathAtomicTerm
       { $1 }
-  | SUCC atomicTerm
+  | SUCC pathAtomicTerm
       { TmSucc $2 }
-  | PRED atomicTerm
+  | PRED pathAtomicTerm
       { TmPred $2 }
-  | ISZERO atomicTerm
+  | ISZERO pathAtomicTerm
       { TmIsZero $2 }
-  | CONCAT atomicTerm atomicTerm
+  | CONCAT pathAtomicTerm pathAtomicTerm
       { TmConcat ($2, $3) }
-  | FIRST atomicTerm
+  | FIRST pathAtomicTerm
       { TmFirst $2 }
-  | REST atomicTerm
+  | REST pathAtomicTerm
       { TmRest $2 }
-  | FIX atomicTerm
+  | FIX pathAtomicTerm
       { TmFix $2 }
   | LBRACK appTerm COMMA appTerm RBRACK COLON ty
       { TmList ($7, $2, $4)}
@@ -114,10 +114,22 @@ appTerm :
       { TmTail ($4, $2) }
   | LBRACK RBRACK COLON ty 
       { TmEmptyList ($4) }
-  | appTerm atomicTerm
+  | appTerm pathAtomicTerm
       { TmApp ($1, $2) }
   | LANGLE IDV EQ term RANGLE AS IDT
       { TmLabel ($2, $4, $7)}
+
+
+pathAtomicTerm :
+    pathAtomicTerm DOT IDV
+    { TmProj ($1, $3) }
+  | pathAtomicTerm DOT STRINGV
+    { TmProj ($1, $3) }
+  | pathAtomicTerm DOT INTV 
+    { TmProj ($1, string_of_int $3) }
+  | atomicTerm
+    { $1 }
+
 
 atomicTerm :
     LPAREN term RPAREN
