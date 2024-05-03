@@ -61,17 +61,14 @@ To prove the correctfullness of the behaviour of this new functionality, we prov
 We added the ability to associate free variables with values or terms.
 This has been achieved by adding a new type, context "(string*binding) list" 
 We also have a few functions to manage the context like, addbinding or getbinding_term, getbinding_type... The use of the addbinding and addbinding_type functions allows us to update the context as we evaluate expressions, while the getbinding_type and getbinding_term functions allows us to retrieve the necessary information from the context during the evaluation process.
-
 The syntax to add new variables would be
-
+```
 >> x = 1 ;;
 x : Nat = 1 
 
 >> N = Nat ;;
 N : type = Nat
-
-
-
+```
 
 #### 2.3 __Strings__
 We added support for the string type.
@@ -201,7 +198,8 @@ letrec map : [Nat] -> (Nat -> Nat) -> [Nat] =
 #### 2.9 __Subtyping__
 We implemented subtyping.
 By creating a function subtypeof, that makes use of the convert_type function, we made the language able to work with terms with different types as long as one is a subtype of the other.
-This new function subtypeof is used in the typeof function in cases such as TmApp, TmFix and the diferent typing rules for Strings and Lists
+This new function subtypeof is used in the typeof function in cases such as TmApp, TmFix and the diferent typing rules for Strings and Lists.
+For tuples and records, subtyping is already implemented in them as they can have fields of different types 
 ```
 >> N = Nat;;
 - : N = Nat
@@ -217,7 +215,17 @@ This new function subtypeof is used in the typeof function in cases such as TmAp
 >> append l l2;;
 - : Nat list = [1, 2, 1, 2, 3]
 ```
-
+Applying subtyping to records
+```
+>> let id = lambda r : {}. r;;
+ - : val 'id' : Record {} -> Record {} =  λr : Record {}.  r
+>> id {x=1, y=2, z=3};;
+ - : val =  Record {x = 1,  y = 2, z = 3}
+>> x = {x=1, y=2};;
+ - : val 'x' : Record {Nat, Nat} =  Record {x = 1,  y = 2}
+>> id x;;
+ - : val = Record {x = 1, y = 2}
+```
 
 
 

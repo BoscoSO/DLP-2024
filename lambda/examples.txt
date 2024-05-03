@@ -99,7 +99,10 @@ N2 = Nat;;
 l = [1, [2, [] : N2] : N2] : N2;;
 l2 = [1, [2, [3, [] : N] : Nat] : N] : Nat;;
 append l l2;;
-
+let id = lambda r : {}. r;;
+id {x=1, y=2, z=3};;
+x = {x=1, y=2};;
+id x;;
 
 	~ Contexto
 

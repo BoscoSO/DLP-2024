@@ -11,8 +11,7 @@ type ty =
   | TyDeclared of string
   | TyList of ty
   | TyTuple of ty list 
-  | TyRecord of (string * ty) list 
-  | TyCustom of string
+  | TyRecord of (string * ty) list
   | TyVariant of (string * ty) list
   | TyAbsVal of ty (*new*)
 
@@ -109,8 +108,6 @@ let rec string_of_ty ty = match ty with
   | TyRecord fields -> "{" ^ String.concat "; " (List.map (fun (f, t) -> f ^ " = " ^ string_of_ty t) fields) ^ "}"
   | TyList t ->
       string_of_ty t ^ " list"
-
-  | TyCustom str -> str
   | TyVariant fields ->
     let rec aux list = match list with
       (i, h) :: [] -> i ^ " : " ^ string_of_ty h
@@ -137,8 +134,6 @@ let rec convert_type ctx ty = match ty with
       TyRecord (List.map (fun (f, t) -> (f, convert_type ctx t)) fields)
   | TyList ty ->
       TyList (convert_type ctx ty)
-  | TyCustom (var) -> 
-      getbinding_type ctx var
   | TyVariant (pairList) -> 
       let f (str, ty) = (str, convert_type ctx ty) in TyVariant (List.map f pairList)
   | TyAbsVal ty -> 
@@ -153,6 +148,13 @@ exception Type_error of string
 let rec subtypeof ctx t1 t2 = match (t1, t2) with
     (TyArr(a1, a2), TyArr(b1, b2)) ->
       (subtypeof ctx a1 b1) && (subtypeof ctx a2 b2)
+  | (TyRecord r1, TyRecord r2) ->
+      let rec contain l1 l2 = match l1 with
+        [] -> true
+      | ((s, ty)::t) ->
+          (&&) (try subtypeof ctx ty (List.assoc s l2) with _ -> false)
+          (contain t l2)
+      in contain r1 r2
   | (t1, t2) ->
       (convert_type ctx t1) = (convert_type ctx t2)
 ;;

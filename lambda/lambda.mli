@@ -7,8 +7,7 @@ type ty =
   | TyDeclared of string
   | TyList of ty
   | TyTuple of ty list 
-  | TyRecord of (string * ty) list 
-  | TyCustom of string
+  | TyRecord of (string * ty) list
   | TyVariant of (string * ty) list
   | TyAbsVal of ty
 
@@ -71,6 +70,7 @@ val getbinding_type : context -> string -> ty;;
 val getbinding_term : context -> string -> term;;
 val convert_type : context -> ty -> ty;;
 
+val convert_type : context -> ty -> ty;;
 val string_of_ty : ty -> string;;
 exception Type_error of string;;
 val typeof : context -> term -> ty;;

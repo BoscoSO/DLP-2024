@@ -2,29 +2,33 @@ open Format;;
 open Lambda;;
 (* Pretty Printer *)
 
-let rec pp_type_aux sn = function
+let rec pp_type_aux = function
 	| TyBool -> print_string "Bool"
 	| TyNat -> print_string "Nat"
 	| TyString -> print_string "String"
 	| TyArr (ty1, ty2) ->
 		open_box 1;
-			pp_type_aux "" ty1;
+			pp_type_aux ty1;
 		close_box();
 		print_string " -> ";
 		open_box 1;
-			pp_type_aux "" ty2;
+			pp_type_aux ty2;
 		close_box();
 	| TyDeclared s -> print_string s;
+	| TyAbsVal s ->
+		print_string "Abs (";
+		pp_type_aux s;
+		print_string ")";
 	| TyList ty ->
 		print_string "'";
-		pp_type_aux "" ty;
+		pp_type_aux ty;
 		print_string "' list";
 	| TyTuple tu ->
 		let rec pp_tup_ty = function
 			| [] -> ()
-			| ty::[] -> pp_type_aux "" ty
+			| ty::[] -> pp_type_aux ty
 			| ty::tl ->
-				pp_type_aux "" ty;
+				pp_type_aux ty;
 				print_string ", ";
 				pp_tup_ty tl;
 			in 
@@ -34,22 +38,50 @@ let rec pp_type_aux sn = function
 	| TyRecord rc ->
 		let rec pp_rec_ty = function
 		| [] -> ()
-		| (_, ty)::[] -> pp_type_aux "" ty
+		| (_, ty)::[] -> pp_type_aux ty
 		| (_, ty)::tl ->
-			pp_type_aux "" ty;
+			pp_type_aux ty;
 			print_string ", ";
 			pp_rec_ty tl;
 		in 
 			print_string "Record {";
 			pp_rec_ty rc;
 			print_string "}";
+	| TyVariant v ->
+		let rec pp_var_ty = function
+		| [] -> ()
+		| (st, ty) :: [] ->
+			print_string (st ^ " : ");
+			pp_type_aux ty
+		| (st, ty) :: tl ->
+			print_string (st ^ " : ");
+			pp_type_aux ty;
+			print_string ",";
+			print_space ();
+			pp_var_ty tl
+		in 
+		open_box 1;
+		print_string "<";
+		pp_var_ty v;
+		print_string ">";
+		close_box();
 ;;
 
-let pp_type sn ty =
+let pp_type_eval ty =
 	open_box 0;
-	print_string (" - : type '" ^ sn ^ "' = ");
+	print_string (" - : type =");
 	print_space ();
-	pp_type_aux sn ty;
+	pp_type_aux ty;
+	close_box();
+	print_newline();
+	print_flush();
+;;
+
+let pp_type_bind sn ty =
+	open_box 0;
+	print_string (" - : type '" ^ sn ^ "' =");
+	print_space ();
+	pp_type_aux ty;
 	close_box();
 	print_newline();
 	print_flush();
@@ -74,9 +106,15 @@ let rec pp_term_aux = function
 		print_space ();
 		close_box ();
 	| TmSucc t ->
+		let rec succ_aux n = function
+			| TmZero -> print_int n
+			| TmSucc t' -> succ_aux (n+1) t'
+			| tm -> 
+				print_string "succ";
+				pp_term_aux tm;
+		in 
 		open_box 1;
-		print_string "succ ";
-		pp_term_aux t;
+		succ_aux 1 t;
 		close_box ();
 	| TmPred t -> 
 		open_box 1;
@@ -93,8 +131,8 @@ let rec pp_term_aux = function
 		print_string "λ";
 		print_string idv;
 		print_string " : ";
-		pp_type_aux "" ty;
-		print_string ". ";
+		pp_type_aux ty;
+		print_string ".";
 		print_space();
 		pp_term_aux term;
 		close_box();
@@ -110,11 +148,11 @@ let rec pp_term_aux = function
 		open_box 1;
 		print_string "let ";
 		print_string idv;
-		print_string " = ";
+		print_string " =";
 		print_space();
 		pp_term_aux t1;
 		print_space();
-		print_string " in ";
+		print_string "in";
 		print_space();
 		pp_term_aux t2;
 		close_box ();
@@ -125,7 +163,7 @@ let rec pp_term_aux = function
 		close_box();
 	| TmConcat (s1, s2) ->
 		open_box 1;
-		print_string "concat ";
+		print_string "concat";
 		print_space();
 		pp_term_aux s1;
 		print_space();
@@ -133,13 +171,13 @@ let rec pp_term_aux = function
 		close_box();
 	| TmFirst s ->
 		open_box 1;
-		print_string "first ";
+		print_string "first";
 		print_space();
 		pp_term_aux s;
 		close_box();
 	| TmRest s ->
 		open_box 1;
-		print_string "rest ";
+		print_string "rest";
 		print_space();
 		pp_term_aux s;
 		close_box();
@@ -148,7 +186,7 @@ let rec pp_term_aux = function
 			| TmEmptyList ty ->
 				open_box 1;
 				print_string "[] : ";
-				pp_type_aux "" ty;
+				pp_type_aux ty;
 				close_box();
 			| TmList (_, h, TmEmptyList _) ->
 				pp_term_aux h
@@ -166,16 +204,16 @@ let rec pp_term_aux = function
 	| TmEmptyList ty-> 
 		open_box 1;
 		print_string "[] : ";
-		pp_type_aux "" ty;
+		pp_type_aux ty;
 		close_box();
  	| TmIsEmptyList (ty, l) ->
  		open_box 1;
- 		print_string "isemptylist ";
+ 		print_string "isemptylist";
  		print_space();
  		pp_term_aux l;
  		print_space();
  		print_string " : ";
- 		pp_type_aux "" ty;
+ 		pp_type_aux ty;
  		close_box();
 	| TmHead (ty, l) -> 
 		open_box 1;
@@ -212,7 +250,7 @@ let rec pp_term_aux = function
 			| (s, tm)::tl ->
 				print_string (s ^ " = ");
 				pp_term_aux tm;
-				print_string ", ";
+				print_string ",";
 				print_space();
 				pp_rec tl
 		in
@@ -221,6 +259,28 @@ let rec pp_term_aux = function
 		pp_rec r;
 		print_string "}";
 		close_box ();
+	| TmAbsVal v ->
+		open_box 1;
+		print_string "Abs(";
+		pp_term_aux v;
+		print_string ")";
+		close_box ()
+	| TmLabel (s1, tm, s2) ->
+		open_box 1;
+		print_string "<";
+		print_string s1;
+		print_string " = ";
+		pp_term_aux tm;
+		print_string ">";
+		print_string " as ";
+		print_string s2;
+		close_box ()
+	| TmProj (t1, fn) ->
+		open_box 1;
+		pp_term_aux t1;
+		print_string ".";
+		print_string fn;
+		close_box ()
 ;;
 
 let pp_term_bind sn ty term =
@@ -228,8 +288,8 @@ let pp_term_bind sn ty term =
 	print_string " - : val '"; 
 	print_string sn; 
 	print_string "' : ";
-	pp_type_aux sn ty;
-	print_string " = ";
+	pp_type_aux ty;
+	print_string " =";
 	print_space();
 	pp_term_aux term;
 	close_box();
@@ -237,9 +297,11 @@ let pp_term_bind sn ty term =
 	print_flush()
 ;;
 
-let pp_term_eval term =
+let pp_term_eval ty term =
 	open_box 0;
-	print_string " - : val = ";
+	print_string " - : ";
+	pp_type_aux ty;
+	print_string " =";
 	print_space();
 	pp_term_aux term;
 	close_box();

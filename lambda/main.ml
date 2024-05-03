@@ -27,11 +27,13 @@ let rec exec exp ctx = match exp with
   | h::t -> 
       match s token (from_string (h)) with
         | EvalOfTerm tm  ->
+            let ty = typeof ctx tm in
             let tm' = eval ctx tm in
-            pp_term_eval tm';
+            pp_term_eval ty tm';
             exec t ctx
-        | EvalOfType ty  -> 
-            pp_type (string_of_ty ty) ty;
+        | EvalOfType ty  ->
+            let ty' = convert_type ctx ty in
+            pp_type_eval ty';
             exec t ctx
         | BindOfTerm (name,tm) -> 
             let ty = typeof ctx tm and tm' = eval ctx tm in
@@ -39,7 +41,8 @@ let rec exec exp ctx = match exp with
             (* Updating Context *)
             exec t (addbinding ctx name (typeof ctx tm) tm')
         | BindOfType (name, ty) ->
-            pp_type name ty;
+            let ty' = convert_type ctx ty in
+            pp_type_bind name ty';
             (* Updating Context *)
             exec t (addbinding_type ctx name ty)
 ;;
