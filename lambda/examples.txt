@@ -152,5 +152,11 @@ abs p3;;
 abs n5;;
 abs z0;;
 
-
-
+(* Al no tener implementado un case, optamos por dejar la logica de la operacion expresada, a pesar de no ser valida para el procesado en nuestro lenguaje *)
+letrec add : Int -> Int -> Int =
+	lambda i1 : Int.
+		lambda i2 : Int.
+			case i2 of
+			  <pos=p> => if iszero i2 then i1 else add (succ i1) (pred i2) 
+			| <zero=z> => i1
+			| <neg=n> => if iszero i2 then i1 else add (pred i1) (pred i2)

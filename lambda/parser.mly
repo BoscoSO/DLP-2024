@@ -149,12 +149,8 @@ atomicTerm :
         in f $1 }
   | LBRACE tuple_list RBRACE
       { TmTuple $2 }
-  | LBRACE RBRACE
-      { TmRecord []}
   | LBRACE record_list RBRACE
       { TmRecord $2 }
-  | ABS LPAREN term RPAREN
-      { TmAbsVal $3 }
 
 tuple_list :
     term
