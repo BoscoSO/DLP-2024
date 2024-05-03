@@ -42,6 +42,10 @@ rule token = parse
   | '='           { EQ }
   | ':'           { COLON }
   | "->"          { ARROW }
+  | '<'         { LANGLE }
+  | '>'         { RANGLE } 
+  | "as"        { AS }
+  | "abs"       { ABS }
   | ['0'-'9']+    { INTV (int_of_string (Lexing.lexeme lexbuf)) }
   | ['a'-'z']['a'-'z' '_' '0'-'9' 'A'-'Z']*
                   { IDV (Lexing.lexeme lexbuf) }

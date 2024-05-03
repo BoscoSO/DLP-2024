@@ -95,3 +95,38 @@ N2 = Nat;;
 l = [1, [2, [] : N2] : N2] : N2;;
 l2 = [1, [2, [3, [] : N] : Nat] : N] : Nat;;
 append l l2;;
+
+
+	~ Contexto
+
+x = true;;
+id = lambda x : Bool. x;;
+id x;;
+
+N=Nat
+lambda x : N. x;;
+
+	~ Tuplas
+
+tpl={1,2,"hey"};;
+first tpl;;
+rest tpl;;
+
+	~ Records
+
+rcd={a=12, b=true, c="hey"};;
+first rcd;;
+rest rcd;;
+
+	~ Variantes
+
+Int = <pos:Nat, zero:Bool, neg:Nat>;;
+
+p3 = <pos=3> as Int;; 
+z0 = <zero=true> as Int;;
+n5 = <neg=5> as Int;;
+
+abs p3;;
+abs n5;;
+abs z0;;
+
