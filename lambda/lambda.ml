@@ -38,7 +38,7 @@ type term =
   (*tupla*)
   | TmTuple of term list
   (*record*)
-  | TmRecord of (string * term) 
+  | TmRecord of (string * term) list
   (*list*)
   | TmList of ty * term * term 
   | TmEmptyList of ty

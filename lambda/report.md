@@ -2,6 +2,11 @@
 ## Programming Languages Design
 
 ### 1.- Improved functionalities
+1. __Multi-Line Expressions__
+In order for this to work we are going to use the double semi-colon ';;' to marck the end of an input.
+So we made a function that wont stop until receaving the ';;' (get_exp on main.ml) and after that, the list is then tokenized and passed as a parameter to eval
+
+
 2. __Pretty printer__
 To improve readability, we add a pretty printer making use of the Format module.
 We created 2 new files (pp.ml and pp.mli) in which we implement pp_type, pp_term_eval and pp_term_bind. This new functions, using Format's module's boxes, make the outputs of the language more human-readable
@@ -48,37 +53,18 @@ To prove the correctfullness of the behaviour of this new functionality, we prov
     	else prod n (fact (pred n));;
 ```
 
+
 2. __Global Definitions Context__
-Cambios en el lambda.ml
-- En el tipo ty añadi el nuevo tipo TyDeclared of string para referirse a los tipos que no son propios del lenguaje y definimos nosotros
-- El tipo contexto ahora es una lista de (string * binding)
-- El tipo binding puede ser | BindTy of ty | BindTm of (ty * term)
-- Esto simplifica las funciones de add y getbinding
-En el lexer está IDT que es el identificador de tipo
-En el parser cree
-- El tipo command lo he cambiado bastante, ahora puede tener EvalOfTerm, EvalOfType, BindOfTerm o BindOfType
-- Cree una funcion convert_type ctx ty que convierte un tipo TyDeclared en el tipo basico del que deriva
-- Cambia un poco en typeof el de TmAbs
+We added the ability to associate free variables with values or terms.
+This has been achieved by adding a new type, context "(string*binding) list" 
+We also have a few functions to handle the context like, addbinding or getbinding_term, and we also use this context in every call of the function eval, typeof, convert_type, subst...
+The syntax to add new variables would be
 
-Cambios en lambda.mli
-- Añadir los cambios que hice en el .ml
+>> x = 1 ;;
+x : Nat = 1 
 
-Cambios en el lexer.mll
-- Añadidos los tokens IDT
-
-Cambios en el parser.mly
-- Añadir esos nuevos tokens
-- Añadidas nuevas reglas en s para poder añadir al contexto los tipos y funciones
-- Añadida una regla en term para convertir el tipo de IDT
-
-```
->> x = 10;;
-- val : x : Nat = 10
->> N = Nat;;	/*esto seguiria la forma IDT EQ ty EOF en el parser*/
-- : N = Nat
->> N;;
-- : type = Nat  /*te dice de que tipo es el tipo creado*/
-```
+>> N = Nat ;;
+N : type = Nat
 
 
 
@@ -179,3 +165,20 @@ This new function subtypeof is used in the typeof function in cases such as TmAp
 >> append l l2;;
 - : Nat list = [1, 2, 1, 2, 3]
 ```
+
+
+
+
+
+
+
+3. __Tuples__
+
+
+
+3. __Records__
+
+
+
+
+3. __Variants__
